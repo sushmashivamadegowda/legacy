@@ -1,16 +1,31 @@
-# React + Vite
+# LegacyKey 🕊️
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+**Live Demo:** [legacy-key.vercel.app](https://legacy-key.vercel.app)
 
-Currently, two official plugins are available:
+## Overview
+LegacyKey is a stunning dark-themed digital legacy platform designed to help you preserve and deliver your digital assets to loved ones after your passing is confirmed. 
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+Built with a focus on trust, security, and a "calm" aesthetic, it combines manual storage (photos, videos, messages) with automated export tools (Chrome passwords, Google Drive).
 
-## React Compiler
+## ✨ Features
+- **📸 Photos & Videos**: Secure storage for shared memories.
+- **🔐 Chrome Exporter**: Automated and encrypted password backup.
+- **☁️ Google Drive/Photos**: Easy export of your digital footprint.
+- **💌 Personal Messages**: Heartfelt letters delivered when they matter most.
+- **🛡️ AES-256 Encryption**: Military-grade security for your data.
+- **✅ Death Verification**: Assets are released only after multi-step confirmation.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## 🎬 Animations
+Powered by **GSAP** and **Framer Motion** for a premium, smooth experience.
 
-## Expanding the ESLint configuration
+## 🛠️ Tech Stack
+- **Frontend**: React + Vite
+- **Animations**: GSAP, Framer Motion
+- **Icons**: Phosphor Icons
+- **Styling**: Vanilla CSS (Custom Design System)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## 🚀 Getting Started
+```bash
+npm install
+npm run dev
+```
