@@ -1,0 +1,42 @@
+:root {
+  /* Dark Theme Colors */
+  --color-bg-main: #0A0E27;
+  /* Deep Navy/Black */
+  --color-bg-secondary: #141B3D;
+  /* Slightly lighter navy */
+  --color-bg-card: #1A2347;
+  /* Card background */
+
+  /* Primary & Accents */
+  --color-primary: #00D9FF;
+  /* Bright Cyan */
+  --color-primary-hover: #00B8D4;
+  --color-accent: #7C3AED;
+  /* Purple accent */
+  --color-accent-glow: rgba(124, 58, 237, 0.3);
+
+  /* Text */
+  --color-text-main: #E8EAED;
+  /* Off-white */
+  --color-text-muted: #9CA3AF;
+  /* Light Grey */
+  --color-text-light: #6B7280;
+
+  /* Borders & Dividers */
+  --color-border: rgba(255, 255, 255, 0.1);
+
+  /* Status Colors (Vibrant for dark) */
+  --color-success: #10B981;
+  --color-danger: #EF4444;
+
+  /* Shadows & Glows */
+  --shadow-soft: 0 10px 40px -10px rgba(0, 0, 0, 0.5);
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.3);
+  --shadow-hover: 0 20px 50px -10px rgba(0, 217, 255, 0.3);
+  --glow-primary: 0 0 20px rgba(0, 217, 255, 0.4);
+
+  /* Gradients */
+  --gradient-scenic: linear-gradient(135deg, #0A0E27 0%, #1A1F3A 100%);
+  --gradient-card: linear-gradient(135deg, rgba(26, 35, 71, 0.6) 0%, rgba(20, 27, 61, 0.8) 100%);
+  --gradient-glow: radial-gradient(circle at 50% 0%, rgba(0, 217, 255, 0.15), transparent 70%);
+}
