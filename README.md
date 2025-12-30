@@ -1,6 +1,6 @@
 # LegacyKey 🕊️
 
-**Live Demo:** [legacy-key.vercel.app](https://legacy-key.vercel.app)
+**Live Demo:** [sushmashivamadegowda.github.io/legacy](https://sushmashivamadegowda.github.io/legacy/)
 
 ## Overview
 LegacyKey is a stunning dark-themed digital legacy platform designed to help you preserve and deliver your digital assets to loved ones after your passing is confirmed. 
