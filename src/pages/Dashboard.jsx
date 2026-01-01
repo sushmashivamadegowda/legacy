@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import gsap from 'gsap';
 import {
@@ -12,15 +12,20 @@ import {
     GoogleChromeLogo,
     GoogleDriveLogo,
     CheckCircle,
-    Clock
+    Clock,
+    WhatsappLogo
 } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const Dashboard = () => {
     const navigate = useNavigate();
+    const { logout, user, token } = useAuth();
     const cardsRef = useRef([]);
+    const [counts, setCounts] = useState({});
 
     useEffect(() => {
+        fetchStats();
         // Stagger animation for stat cards
         gsap.fromTo(
             cardsRef.current,
@@ -36,13 +41,28 @@ const Dashboard = () => {
         );
     }, []);
 
+    const fetchStats = async () => {
+        try {
+            const response = await fetch('http://localhost:8000/user/stats', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setCounts(data);
+            }
+        } catch (error) {
+            console.error('Error fetching stats:', error);
+        }
+    };
+
     const stats = [
-        { title: 'Photos & Videos', count: 24, icon: <Image size={32} color="#EC407A" />, color: 'rgba(236, 64, 122, 0.15)', border: '#EC407A' },
-        { title: 'Chrome Passwords', count: 47, icon: <GoogleChromeLogo size={32} color="#F57C00" />, color: 'rgba(245, 124, 0, 0.15)', border: '#F57C00' },
-        { title: 'Google Drive', count: '2.4 GB', icon: <GoogleDriveLogo size={32} color="#1976D2" />, color: 'rgba(25, 118, 210, 0.15)', border: '#1976D2' },
-        { title: 'Messages', count: 3, icon: <EnvelopeSimple size={32} color="#8E24AA" />, color: 'rgba(142, 36, 170, 0.15)', border: '#8E24AA' },
-        { title: 'Password Vault', count: 12, icon: <Key size={32} color="#00D9FF" />, color: 'rgba(0, 217, 255, 0.15)', border: '#00D9FF' },
-        { title: 'Beneficiaries', count: 2, icon: <Users size={32} color="#7C3AED" />, color: 'rgba(124, 58, 237, 0.15)', border: '#7C3AED' },
+        { title: 'Photos & Videos', count: counts.photosvids || 0, icon: <Image size={32} color="#EC407A" />, color: 'rgba(236, 64, 122, 0.15)', border: '#EC407A', slug: 'photosvids' },
+        { title: 'Chrome Passwords', count: counts.chromepass || 0, icon: <GoogleChromeLogo size={32} color="#F57C00" />, color: 'rgba(245, 124, 0, 0.15)', border: '#F57C00', slug: 'chromepass' },
+        { title: 'Google Drive', count: counts.gdrive || 0, icon: <GoogleDriveLogo size={32} color="#1976D2" />, color: 'rgba(25, 118, 210, 0.15)', border: '#1976D2', slug: 'gdrive' },
+        { title: 'Messages', count: counts.messages || 0, icon: <EnvelopeSimple size={32} color="#8E24AA" />, color: 'rgba(142, 36, 170, 0.15)', border: '#8E24AA', slug: 'messages' },
+        { title: 'Password Vault', count: counts.passvault || 0, icon: <Key size={32} color="#00D9FF" />, color: 'rgba(0, 217, 255, 0.15)', border: '#00D9FF', slug: 'passvault' },
+        { title: 'WhatsApp Backups', count: counts.whatsapp || 0, icon: <WhatsappLogo size={32} color="#25D366" />, color: 'rgba(37, 211, 102, 0.15)', border: '#25D366', slug: 'whatsapp' },
+        { title: 'Beneficiaries', count: counts.beneficiaries || 0, icon: <Users size={32} color="#7C3AED" />, color: 'rgba(124, 58, 237, 0.15)', border: '#7C3AED', slug: 'beneficiaries' },
     ];
 
     return (
@@ -72,9 +92,10 @@ const Dashboard = () => {
                             alignItems: 'center',
                             justifyContent: 'center',
                             fontWeight: 'bold',
-                            boxShadow: 'var(--glow-primary)'
+                            boxShadow: 'var(--glow-primary)',
+                            textTransform: 'uppercase'
                         }}>
-                            LK
+                            {user?.username?.charAt(0) || 'U'}
                         </div>
                         <span style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--color-text-main)' }}>Dashboard</span>
                     </div>
@@ -94,7 +115,7 @@ const Dashboard = () => {
                             }}></span>
                         </motion.button>
                         <button
-                            onClick={() => navigate('/')}
+                            onClick={logout}
                             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.9rem', cursor: 'pointer' }}
                         >
                             <SignOut size={20} /> Sign Out
@@ -112,7 +133,7 @@ const Dashboard = () => {
                     style={{ marginBottom: '3rem' }}
                 >
                     <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem', color: 'var(--color-text-main)' }}>
-                        Good evening, <span style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>Alex</span>.
+                        Good evening, <span style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{user?.username}</span>.
                     </h1>
                     <p style={{ fontSize: '1.1rem', color: 'var(--color-text-muted)' }}>
                         Your digital legacy is <strong style={{ color: 'var(--color-primary)' }}>78% complete</strong>.
@@ -127,6 +148,7 @@ const Dashboard = () => {
                             key={index}
                             ref={el => cardsRef.current[index] = el}
                             whileHover={{ y: -8, scale: 1.02 }}
+                            onClick={() => navigate(`/assets/${stat.slug}`)}
                             className="card"
                             style={{
                                 display: 'flex',

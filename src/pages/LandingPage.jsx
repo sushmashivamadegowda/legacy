@@ -4,11 +4,13 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { ArrowRight, ShieldCheck, Image, Key, EnvelopeSimple, GoogleChromeLogo, GoogleDriveLogo, Timer } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 gsap.registerPlugin(ScrollTrigger);
 
 const LandingPage = () => {
     const navigate = useNavigate();
+    const { token } = useAuth();
     const heroRef = useRef(null);
     const featuresRef = useRef(null);
 
@@ -73,8 +75,14 @@ const LandingPage = () => {
                         LegacyKey
                     </div>
                     <div>
-                        <button className="btn btn-secondary" style={{ marginRight: '1rem' }}>Log In</button>
-                        <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>Get Started</button>
+                        {token ? (
+                            <button className="btn btn-primary" onClick={() => navigate('/dashboard')}>Go to Dashboard</button>
+                        ) : (
+                            <>
+                                <button className="btn btn-secondary" style={{ marginRight: '1rem' }} onClick={() => navigate('/login')}>Sign In</button>
+                                <button className="btn btn-primary" onClick={() => navigate('/login')}>Get Started</button>
+                            </>
+                        )}
                     </div>
                 </div>
             </motion.nav>
@@ -121,8 +129,8 @@ const LandingPage = () => {
                     </motion.p>
 
                     <motion.div variants={itemVariants} className="cta-group" style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-                        <button className="btn btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1.1rem' }} onClick={() => navigate('/dashboard')}>
-                            Start Your Legacy <ArrowRight size={20} weight="bold" style={{ marginLeft: '8px' }} />
+                        <button className="btn btn-primary" style={{ padding: '1rem 2.5rem', fontSize: '1.1rem' }} onClick={() => navigate(token ? '/dashboard' : '/login')}>
+                            {token ? 'Go to Dashboard' : 'Start Your Legacy'} <ArrowRight size={20} weight="bold" style={{ marginLeft: '8px' }} />
                         </button>
                         <button className="btn btn-secondary" style={{ padding: '1rem 2.5rem', fontSize: '1.1rem' }}>
                             How It Works
