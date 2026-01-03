@@ -6,6 +6,7 @@ import toast from 'react-hot-toast';
 
 const Login = () => {
     const [isLogin, setIsLogin] = useState(true);
+    const [email, setEmail] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -25,13 +26,13 @@ const Login = () => {
 
         try {
             const success = isLogin
-                ? await login(username, password)
-                : await register(username, password);
+                ? await login(email, password)
+                : await register(email, password, username);
 
             if (success) {
                 toast.success(isLogin ? 'Welcome back!' : 'Account created!', { id: toastId });
             } else {
-                toast.error(isLogin ? 'Invalid username or password' : 'Registration failed. Try a different username.', { id: toastId });
+                toast.error(isLogin ? 'Invalid email or password' : 'Registration failed. Try again.', { id: toastId });
                 setIsLoading(false);
             }
         } catch (error) {
@@ -67,11 +68,11 @@ const Login = () => {
                     <div style={{ position: 'relative' }}>
                         <User size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
                         <input
-                            type="text"
-                            placeholder="Username"
+                            type="email"
+                            placeholder="Email Address"
                             required
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
+                            value={email}
+                            onChange={(e) => setEmail(e.target.value)}
                             style={{ width: '100%', padding: '1rem 1rem 1rem 3rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
                         />
                     </div>
@@ -88,21 +89,30 @@ const Login = () => {
                     </div>
 
                     {!isLogin && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            style={{ position: 'relative' }}
-                        >
-                            <Lock size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
-                            <input
-                                type="password"
-                                placeholder="Confirm Password"
-                                required
-                                value={confirmPassword}
-                                onChange={(e) => setConfirmPassword(e.target.value)}
-                                style={{ width: '100%', padding: '1rem 1rem 1rem 3rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
-                            />
-                        </motion.div>
+                        <>
+                            <div style={{ position: 'relative' }}>
+                                <User size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                                <input
+                                    type="text"
+                                    placeholder="Username"
+                                    required
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    style={{ width: '100%', padding: '1rem 1rem 1rem 3rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
+                                />
+                            </div>
+                            <div style={{ position: 'relative' }}>
+                                <Lock size={20} style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--color-text-muted)' }} />
+                                <input
+                                    type="password"
+                                    placeholder="Confirm Password"
+                                    required
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    style={{ width: '100%', padding: '1rem 1rem 1rem 3rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
+                                />
+                            </div>
+                        </>
                     )}
 
                     <button

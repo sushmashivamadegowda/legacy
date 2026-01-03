@@ -16,31 +16,79 @@ import {
 } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
 const Dashboard = () => {
     const navigate = useNavigate();
-    const { logout, user, token } = useAuth();
+    const { logout, user } = useAuth();
     const [counts, setCounts] = useState({});
     const [checkIn, setCheckIn] = useState({});
     const [recentActivity, setRecentActivity] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        fetchDashboardData();
-    }, []);
+        if (user) {
+            fetchDashboardData();
+        }
+    }, [user]);
 
     const fetchDashboardData = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('http://127.0.0.1:8000/user/dashboard-data', {
-                headers: { 'Authorization': `Bearer ${token}` }
+            // 1. Fetch Stats (Group by category)
+            const { data: assets, error: assetsError } = await supabase
+                .from('assets')
+                .select('category');
+
+            if (assetsError) throw assetsError;
+
+            const categories = ['photosvids', 'chromepass', 'gdrive', 'messages', 'passvault', 'whatsapp'];
+            const stats = categories.reduce((acc, cat) => ({ ...acc, [cat]: 0 }), {});
+            assets.forEach(asset => {
+                if (stats[asset.category] !== undefined) {
+                    stats[asset.category]++;
+                }
             });
-            if (response.ok) {
-                const data = await response.json();
-                setCounts(data.stats);
-                setCheckIn(data.check_in);
-                setRecentActivity(data.recent_activity);
-            }
+
+            // 2. Fetch Beneficiaries count
+            const { count: beneficiariesCount, error: beneficiariesError } = await supabase
+                .from('beneficiaries')
+                .select('*', { count: 'exact', head: true });
+
+            if (beneficiariesError) throw beneficiariesError;
+            stats.beneficiaries = beneficiariesCount;
+
+            setCounts(stats);
+
+            // 3. Fetch Profile (Check-in status)
+            const { data: profile, error: profileError } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', user.id)
+                .single();
+
+            if (profileError) throw profileError;
+
+            const nextCheckIn = new Date(profile.last_check_in);
+            nextCheckIn.setDate(nextCheckIn.getDate() + (profile.check_in_frequency_days || 30));
+            const daysRemaining = Math.max(0, Math.ceil((nextCheckIn - new Date()) / (1000 * 60 * 60 * 24)));
+
+            setCheckIn({
+                last_check_in: profile.last_check_in,
+                days_remaining: daysRemaining,
+                is_emergency: profile.is_emergency_mode
+            });
+
+            // 4. Fetch Recent Activity
+            const { data: recent, error: recentError } = await supabase
+                .from('assets')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(5);
+
+            if (recentError) throw recentError;
+            setRecentActivity(recent);
+
         } catch (error) {
             console.error('Error fetching dashboard data:', error);
         } finally {
@@ -77,12 +125,12 @@ const Dashboard = () => {
         }
     };
 
-    const SkeletonCard = () => (
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--color-border)', height: '110px' }}>
+    const SkeletonContent = () => (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', width: '100%' }}>
             <div className="skeleton" style={{ width: '60px', height: '60px', borderRadius: '16px', flexShrink: 0 }}></div>
             <div style={{ flex: 1 }}>
                 <div className="skeleton" style={{ width: '40px', height: '2rem', marginBottom: '0.4rem', borderRadius: '4px' }}></div>
-                <div className="skeleton" style={{ width: '120px', height: '0.9rem', borderRadius: '4px' }}></div>
+                <div className="skeleton" style={{ width: '100px', height: '0.9rem', borderRadius: '4px' }}></div>
             </div>
         </div>
     );
@@ -96,33 +144,15 @@ const Dashboard = () => {
             style={{ paddingBottom: '4rem', minHeight: '100vh' }}
         >
             {/* Top Navigation */}
-            <header className="glass" style={{
-                position: 'sticky',
-                top: 0,
-                zIndex: 100,
-                borderBottom: '1px solid var(--color-border)',
-                padding: '1rem 0'
-            }}>
+            <header className="glass" style={{ position: 'sticky', top: 0, zIndex: 100, borderBottom: '1px solid var(--color-border)', padding: '1rem 0' }}>
                 <div className="container" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                        <div style={{
-                            width: '40px', height: '40px',
-                            background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))',
-                            borderRadius: '50%',
-                            color: 'white',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontWeight: 'bold',
-                            boxShadow: 'var(--glow-primary)',
-                            textTransform: 'uppercase'
-                        }}>
-                            {user?.username?.charAt(0) || 'U'}
+                        <div style={{ width: '40px', height: '40px', background: 'var(--color-primary)', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <EnvelopeSimple size={24} color="white" weight="bold" />
                         </div>
-                        <span style={{ fontFamily: 'var(--font-serif)', fontSize: '1.25rem', fontWeight: 'bold', color: 'var(--color-text-main)' }}>Dashboard</span>
+                        <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--color-text-main)' }}>LEGACY</span>
                     </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
                         <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.95 }}
@@ -136,11 +166,9 @@ const Dashboard = () => {
                                 boxShadow: '0 0 10px #EF4444'
                             }}></span>
                         </motion.button>
-                        <button
-                            onClick={logout}
-                            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'none', border: 'none', color: 'var(--color-text-muted)', fontSize: '0.9rem', cursor: 'pointer' }}
-                        >
-                            <SignOut size={20} /> Sign Out
+                        <button onClick={logout} className="btn btn-secondary" style={{ borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <SignOut size={20} />
+                            <span>Sign Out</span>
                         </button>
                     </div>
                 </div>
@@ -161,52 +189,54 @@ const Dashboard = () => {
                     </p>
                 </motion.section>
 
-                {/* Quick Stats Grid */}
+                {/* Quick Stats Grid - ALWAYS Rendered for Animation Stability */}
                 <motion.section
                     variants={containerVariants}
                     style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}
                 >
-                    {isLoading ? (
-                        [...Array(stats.length)].map((_, i) => <SkeletonCard key={i} />)
-                    ) : (
-                        stats.map((stat, index) => (
-                            <motion.div
-                                key={index}
-                                variants={itemVariants}
-                                whileHover={{ y: -8, scale: 1.02 }}
-                                onClick={() => navigate(`/assets/${stat.slug}`)}
-                                className="card"
-                                style={{
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '1.5rem',
-                                    cursor: 'pointer',
-                                    background: `linear-gradient(135deg, ${stat.color}, rgba(26, 35, 71, 0.8))`,
-                                    borderLeft: `3px solid ${stat.border}`,
-                                    height: '110px'
-                                }}
-                            >
-                                <div style={{
-                                    width: '60px',
-                                    height: '60px',
-                                    borderRadius: '16px',
-                                    background: stat.color,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    flexShrink: 0,
-                                    border: `1px solid ${stat.border}60`,
-                                    boxShadow: `0 0 20px ${stat.border}40`
-                                }}>
-                                    {stat.icon}
-                                </div>
-                                <div style={{ overflow: 'hidden' }}>
-                                    <h3 style={{ fontSize: '2rem', marginBottom: '0', lineHeight: 1, color: 'var(--color-text-main)' }}>{stat.count}</h3>
-                                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>{stat.title}</span>
-                                </div>
-                            </motion.div>
-                        ))
-                    )}
+                    {stats.map((stat, index) => (
+                        <motion.div
+                            key={index}
+                            variants={itemVariants}
+                            whileHover={{ y: -8, scale: 1.02 }}
+                            onClick={() => !isLoading && navigate(`/assets/${stat.slug}`)}
+                            className="card"
+                            style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '1.5rem',
+                                cursor: isLoading ? 'default' : 'pointer',
+                                background: `linear-gradient(135deg, ${stat.color}, rgba(26, 35, 71, 0.8))`,
+                                borderLeft: `3px solid ${stat.border}`,
+                                height: '110px'
+                            }}
+                        >
+                            {isLoading ? (
+                                <SkeletonContent />
+                            ) : (
+                                <>
+                                    <div style={{
+                                        width: '60px',
+                                        height: '60px',
+                                        borderRadius: '16px',
+                                        background: stat.color,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        flexShrink: 0,
+                                        border: `1px solid ${stat.border}60`,
+                                        boxShadow: `0 0 20px ${stat.border}40`
+                                    }}>
+                                        {stat.icon}
+                                    </div>
+                                    <div style={{ overflow: 'hidden' }}>
+                                        <h3 style={{ fontSize: '2rem', marginBottom: '0', lineHeight: 1, color: 'var(--color-text-main)' }}>{stat.count}</h3>
+                                        <span style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>{stat.title}</span>
+                                    </div>
+                                </>
+                            )}
+                        </motion.div>
+                    ))}
                 </motion.section>
 
                 {/* Main Actions */}
@@ -320,16 +350,18 @@ const Dashboard = () => {
                                     whileTap={{ scale: 0.95 }}
                                     onClick={async () => {
                                         try {
-                                            const response = await fetch('http://127.0.0.1:8000/user/check-in', {
-                                                method: 'POST',
-                                                headers: { 'Authorization': `Bearer ${token}` }
-                                            });
-                                            if (response.ok) {
-                                                // toast.success('Successfully checked in!');
-                                                fetchDashboardData();
-                                            }
+                                            const { error } = await supabase
+                                                .from('profiles')
+                                                .update({
+                                                    last_check_in: new Date().toISOString(),
+                                                    is_emergency_mode: false
+                                                })
+                                                .eq('id', user.id);
+
+                                            if (error) throw error;
+                                            fetchDashboardData();
                                         } catch (error) {
-                                            // toast.error('Check-in failed');
+                                            console.error('Check-in failed:', error);
                                         }
                                     }}
                                     className="btn btn-secondary"

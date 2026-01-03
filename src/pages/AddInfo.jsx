@@ -4,10 +4,11 @@ import { CaretLeft, CloudArrowUp, Eye, Users } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import { supabase } from '../lib/supabase';
 
 const AddInfo = () => {
     const navigate = useNavigate();
-    const { token } = useAuth();
+    const { user } = useAuth();
     const [title, setTitle] = useState('');
     const [category, setCategory] = useState('photosvids');
     const [details, setDetails] = useState('');
@@ -25,20 +26,19 @@ const AddInfo = () => {
     const [recipient, setRecipient] = useState('');
 
     useEffect(() => {
-        if (token) {
+        if (user) {
             fetchBeneficiaries();
         }
-    }, [token]);
+    }, [user]);
 
     const fetchBeneficiaries = async () => {
         try {
-            const response = await fetch('http://localhost:8000/beneficiaries', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setBeneficiaries(data);
-            }
+            const { data, error } = await supabase
+                .from('beneficiaries')
+                .select('*');
+
+            if (error) throw error;
+            setBeneficiaries(data);
         } catch (error) {
             console.error('Error fetching beneficiaries:', error);
         } finally {
@@ -88,33 +88,38 @@ const AddInfo = () => {
         setIsUploading(true);
         const toastId = toast.loading('Uploading asset to secure storage...');
 
-        const formData = new FormData();
-        // Fallback to filename if title is empty
-        const finalTitle = title || (file ? file.name : `${category} ${new Date().toLocaleDateString()}`);
-        formData.append('title', finalTitle);
-        formData.append('category', category);
-        formData.append('details', details);
-        formData.append('file', file);
-
         try {
-            const response = await fetch('http://127.0.0.1:8000/upload', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                },
-                body: formData,
-            });
+            const finalTitle = title || file.name;
+            const fileExt = file.name.split('.').pop();
+            const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+            const filePath = `user_${user.id}/${category}/${fileName}`;
 
-            if (response.ok) {
-                toast.success('Asset saved successfully!', { id: toastId });
-                navigate('/dashboard');
-            } else {
-                const errorData = await response.json();
-                toast.error(`Upload failed: ${errorData.detail || 'Unknown error'}`, { id: toastId });
-            }
+            // 1. Upload to Supabase Storage
+            const { error: uploadError } = await supabase.storage
+                .from('assets')
+                .upload(filePath, file);
+
+            if (uploadError) throw uploadError;
+
+            // 2. Insert record into database
+            const { error: dbError } = await supabase
+                .from('assets')
+                .insert({
+                    title: finalTitle,
+                    category: category,
+                    details: details,
+                    object_name: filePath,
+                    file_name: file.name,
+                    user_id: user.id
+                });
+
+            if (dbError) throw dbError;
+
+            toast.success('Asset saved successfully!', { id: toastId });
+            navigate('/dashboard');
         } catch (error) {
             console.error('Error uploading:', error);
-            toast.error('Error connecting to the server', { id: toastId });
+            toast.error(error.message || 'Error uploading asset', { id: toastId });
         } finally {
             setIsUploading(false);
         }

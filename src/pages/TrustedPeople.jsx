@@ -4,27 +4,27 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
+import { supabase } from '../lib/supabase';
 
 const TrustedPeople = () => {
     const navigate = useNavigate();
-    const { token } = useAuth();
+    const { user } = useAuth();
     const [people, setPeople] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (token) fetchPeople();
-    }, [token]);
+        if (user) fetchPeople();
+    }, [user]);
 
     const fetchPeople = async () => {
         setLoading(true);
         try {
-            const response = await fetch('http://localhost:8000/beneficiaries', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setPeople(data);
-            }
+            const { data, error } = await supabase
+                .from('beneficiaries')
+                .select('*');
+
+            if (error) throw error;
+            setPeople(data);
         } catch (error) {
             console.error('Error fetching people:', error);
         } finally {
@@ -33,20 +33,25 @@ const TrustedPeople = () => {
     };
 
     const togglePermission = async (id, type) => {
-        const typeMap = { 'subscription': 'photos', 'docs': 'docs', 'messages': 'messages' };
-        const permType = typeMap[type];
+        const typeMap = { 'subscription': 'can_access_photos', 'docs': 'can_access_docs', 'messages': 'can_access_messages' };
+        const permField = typeMap[type];
+
+        const person = people.find(p => p.id === id);
+        if (!person) return;
 
         try {
-            const response = await fetch(`http://127.0.0.1:8000/beneficiaries/${id}/toggle/${permType}`, {
-                method: 'PATCH',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const updated = await response.json();
-                setPeople(people.map(p => p.id === id ? updated : p));
-                toast.success('Permission updated');
-            }
+            const { data, error } = await supabase
+                .from('beneficiaries')
+                .update({ [permField]: !person[permField] })
+                .eq('id', id)
+                .select()
+                .single();
+
+            if (error) throw error;
+            setPeople(people.map(p => p.id === id ? data : p));
+            toast.success('Permission updated');
         } catch (error) {
+            console.error('Toggle error:', error);
             toast.error('Failed to update permission');
         }
     };
@@ -55,14 +60,14 @@ const TrustedPeople = () => {
         if (!window.confirm('Are you sure you want to remove this contact?')) return;
 
         try {
-            const response = await fetch(`http://localhost:8000/beneficiaries/${id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                setPeople(people.filter(p => p.id !== id));
-                toast.success('Contact removed');
-            }
+            const { error } = await supabase
+                .from('beneficiaries')
+                .delete()
+                .eq('id', id);
+
+            if (error) throw error;
+            setPeople(people.filter(p => p.id !== id));
+            toast.success('Contact removed');
         } catch (error) {
             toast.error('Failed to remove contact');
         }
@@ -76,28 +81,26 @@ const TrustedPeople = () => {
     const addPerson = async (e) => {
         e.preventDefault();
         try {
-            const response = await fetch('http://localhost:8000/beneficiaries', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
+            const { data, error } = await supabase
+                .from('beneficiaries')
+                .insert({
                     name: newName,
                     email: newEmail,
-                    relation: newRelation
+                    relation: newRelation,
+                    user_id: user.id
                 })
-            });
-            if (response.ok) {
-                const newPerson = await response.json();
-                setPeople([...people, newPerson]);
-                toast.success('Contact added');
-                setShowModal(false);
-                setNewName('');
-                setNewEmail('');
-                setNewRelation('');
-            }
+                .select()
+                .single();
+
+            if (error) throw error;
+            setPeople([...people, data]);
+            toast.success('Contact added');
+            setShowModal(false);
+            setNewName('');
+            setNewEmail('');
+            setNewRelation('');
         } catch (error) {
+            console.error('Add person error:', error);
             toast.error('Failed to add contact');
         }
     };

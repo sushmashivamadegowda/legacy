@@ -3,29 +3,31 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { CaretLeft, FileText, DownloadSimple, Trash, X, MagnifyingGlassPlus } from '@phosphor-icons/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../lib/supabase';
 
 const AssetList = () => {
     const { category } = useParams();
     const navigate = useNavigate();
-    const { token } = useAuth();
+    const { user } = useAuth();
     const [assets, setAssets] = useState([]);
     const [loading, setLoading] = useState(true);
     const [selectedAsset, setSelectedAsset] = useState(null);
 
     useEffect(() => {
-        if (token) fetchAssets();
-    }, [category, token]);
+        if (user) fetchAssets();
+    }, [category, user]);
 
     const fetchAssets = async () => {
         setLoading(true);
         try {
-            const response = await fetch(`http://localhost:8000/assets/${category}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (response.ok) {
-                const data = await response.json();
-                setAssets(data);
-            }
+            const { data, error } = await supabase
+                .from('assets')
+                .select('*')
+                .eq('category', category)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setAssets(data);
         } catch (error) {
             console.error('Error fetching assets:', error);
         } finally {
@@ -43,20 +45,19 @@ const AssetList = () => {
         'beneficiaries': 'Beneficiaries'
     };
 
-    const AssetLightboxContent = ({ asset, token }) => {
+    const AssetLightboxContent = ({ asset }) => {
         const [url, setUrl] = useState(null);
         const [loading, setLoading] = useState(true);
 
         useEffect(() => {
             const fetchUrl = async () => {
                 try {
-                    const response = await fetch(`http://127.0.0.1:8000/assets/${asset.id}/view`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    if (response.ok) {
-                        const data = await response.json();
-                        setUrl(data.url);
-                    }
+                    const { data, error } = await supabase.storage
+                        .from('assets')
+                        .createSignedUrl(asset.object_name, 3600);
+
+                    if (error) throw error;
+                    setUrl(data.signedUrl);
                 } catch (err) {
                     console.error("Lightbox fetch error", err);
                 } finally {
@@ -64,7 +65,7 @@ const AssetList = () => {
                 }
             };
             fetchUrl();
-        }, [asset.id, token]);
+        }, [asset.object_name]);
 
         if (loading) return <div className="skeleton" style={{ width: '100%', height: '400px' }}></div>;
         if (!url) return <div style={{ padding: '3rem', textAlign: 'center', color: 'white' }}>Failed to load preview.</div>;
@@ -91,13 +92,12 @@ const AssetList = () => {
         const fetchImageUrl = async () => {
             setIsImageLoading(true);
             try {
-                const response = await fetch(`http://localhost:8000/assets/${asset.id}/view`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    setImageUrl(data.url);
-                }
+                const { data, error } = await supabase.storage
+                    .from('assets')
+                    .createSignedUrl(asset.object_name, 3600);
+
+                if (error) throw error;
+                setImageUrl(data.signedUrl);
             } catch (err) {
                 console.error("Failed to load image url", err);
             } finally {
@@ -229,13 +229,32 @@ const AssetList = () => {
 
                             {category === 'photosvids' ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-                                    <AssetLightboxContent asset={selectedAsset} token={token} />
+                                    <AssetLightboxContent asset={selectedAsset} />
                                     <div style={{ padding: '1.5rem', background: 'var(--color-bg-card)' }}>
                                         <h2 style={{ fontSize: '1.5rem', margin: '0 0 0.5rem' }}>{selectedAsset.title}</h2>
                                         <p style={{ color: 'var(--color-text-muted)', margin: '0 0 1.5rem' }}>{selectedAsset.file_name} • {selectedAsset.details || 'No description'}</p>
                                         <div style={{ display: 'flex', gap: '1rem' }}>
                                             <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setSelectedAsset(null)}>Close</button>
-                                            <button className="btn btn-secondary" style={{ color: '#EF4444' }} onClick={() => { /* Implement delete */ }}><Trash size={18} /></button>
+                                            <button className="btn btn-secondary" style={{ color: '#EF4444' }} onClick={async () => {
+                                                if (window.confirm('Are you sure you want to delete this asset?')) {
+                                                    try {
+                                                        const { error: storageError } = await supabase.storage
+                                                            .from('assets')
+                                                            .remove([selectedAsset.object_name]);
+
+                                                        const { error: dbError } = await supabase
+                                                            .from('assets')
+                                                            .delete()
+                                                            .eq('id', selectedAsset.id);
+
+                                                        if (dbError) throw dbError;
+                                                        setSelectedAsset(null);
+                                                        fetchAssets();
+                                                    } catch (err) {
+                                                        console.error('Delete failed:', err);
+                                                    }
+                                                }
+                                            }}><Trash size={18} /></button>
                                         </div>
                                     </div>
                                 </div>
@@ -268,7 +287,26 @@ const AssetList = () => {
 
                                     <div style={{ display: 'flex', gap: '1rem' }}>
                                         <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setSelectedAsset(null)}>Done</button>
-                                        <button className="btn btn-secondary" style={{ color: '#EF4444' }}><Trash size={18} /></button>
+                                        <button className="btn btn-secondary" style={{ color: '#EF4444' }} onClick={async () => {
+                                            if (window.confirm('Are you sure you want to delete this asset?')) {
+                                                try {
+                                                    await supabase.storage
+                                                        .from('assets')
+                                                        .remove([selectedAsset.object_name]);
+
+                                                    const { error } = await supabase
+                                                        .from('assets')
+                                                        .delete()
+                                                        .eq('id', selectedAsset.id);
+
+                                                    if (error) throw error;
+                                                    setSelectedAsset(null);
+                                                    fetchAssets();
+                                                } catch (err) {
+                                                    console.error('Delete failed:', err);
+                                                }
+                                            }
+                                        }}><Trash size={18} /></button>
                                     </div>
                                 </>
                             )}

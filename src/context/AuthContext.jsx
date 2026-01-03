@@ -1,67 +1,92 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../lib/supabase';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [token, setToken] = useState(localStorage.getItem('token'));
+    const [token, setToken] = useState(null);
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
 
     useEffect(() => {
-        if (token) {
-            // In a real app, you might want to verify the token with the backend here
-            setUser({ username: localStorage.getItem('username') });
-        }
-        setLoading(false);
-    }, [token]);
+        // Check active sessions and sets the user
+        const getSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession();
+            setUser(session?.user ?? null);
+            setToken(session?.access_token ?? null);
+            setLoading(false);
+        };
 
-    const login = async (username, password) => {
-        const formData = new URLSearchParams();
-        formData.append('username', username);
-        formData.append('password', password);
+        getSession();
 
-        const response = await fetch('http://localhost:8000/token', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-            },
-            body: formData,
+        // Listen for changes on auth state (sign in, sign out, etc.)
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user ?? null);
+            setToken(session?.access_token ?? null);
+            setLoading(false);
         });
 
-        if (response.ok) {
-            const data = await response.json();
-            localStorage.setItem('token', data.access_token);
-            localStorage.setItem('username', username);
-            setToken(data.access_token);
-            setUser({ username });
+        return () => subscription.unsubscribe();
+    }, []);
+
+    const login = async (email, password) => {
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password,
+        });
+
+        if (error) {
+            console.error('Login error:', error.message);
+            return false;
+        }
+
+        if (data.user) {
+            setUser(data.user);
+            setToken(data.session?.access_token);
             navigate('/dashboard');
             return true;
         }
         return false;
     };
 
-    const register = async (username, password) => {
-        const response = await fetch('http://127.0.0.1:8000/register', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ username, password }),
+    const register = async (email, password, username) => {
+        const { data, error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    username: username
+                }
+            }
         });
 
-        if (response.ok) {
-            return await login(username, password);
+        if (error) {
+            console.error('Registration error:', error.message);
+            return false;
+        }
+
+        if (data.user) {
+            if (data.session) {
+                setUser(data.user);
+                setToken(data.session.access_token);
+                navigate('/dashboard');
+            } else {
+                alert('Registration successful! Please check your email for verification.');
+            }
+            return true;
         }
         return false;
     };
 
-    const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('username');
-        setToken(null);
+    const logout = async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+            console.error('Logout error:', error.message);
+        }
         setUser(null);
+        setToken(null);
         navigate('/');
     };
 
