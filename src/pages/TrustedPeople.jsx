@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { CaretLeft, Plus, UserCircle, ToggleLeft, ToggleRight, Trash } from '@phosphor-icons/react';
+import { CaretLeft, Plus, UserCircle, ToggleLeft, ToggleRight, Trash, X } from '@phosphor-icons/react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -67,15 +68,13 @@ const TrustedPeople = () => {
         }
     };
 
-    const addPerson = async () => {
-        // Simplified for production demo - usually a modal
-        const name = prompt('Enter Name:');
-        if (!name) return;
-        const email = prompt('Enter Email:');
-        if (!email) return;
-        const relation = prompt('Enter Relation:');
-        if (!relation) return;
+    const [showModal, setShowModal] = useState(false);
+    const [newName, setNewName] = useState('');
+    const [newEmail, setNewEmail] = useState('');
+    const [newRelation, setNewRelation] = useState('');
 
+    const addPerson = async (e) => {
+        e.preventDefault();
         try {
             const response = await fetch('http://localhost:8000/beneficiaries', {
                 method: 'POST',
@@ -83,12 +82,20 @@ const TrustedPeople = () => {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ name, email, relation })
+                body: JSON.stringify({
+                    name: newName,
+                    email: newEmail,
+                    relation: newRelation
+                })
             });
             if (response.ok) {
                 const newPerson = await response.json();
                 setPeople([...people, newPerson]);
                 toast.success('Contact added');
+                setShowModal(false);
+                setNewName('');
+                setNewEmail('');
+                setNewRelation('');
             }
         } catch (error) {
             toast.error('Failed to add contact');
@@ -106,7 +113,7 @@ const TrustedPeople = () => {
                     <h1 style={{ marginBottom: '0.5rem' }}>Trusted People</h1>
                     <p>Manage who has access to your digital vault.</p>
                 </div>
-                <button className="btn btn-primary" onClick={addPerson}>
+                <button className="btn btn-primary" onClick={() => setShowModal(true)}>
                     <Plus size={20} weight="bold" style={{ marginRight: '8px' }} /> Add Person
                 </button>
             </div>
@@ -166,6 +173,75 @@ const TrustedPeople = () => {
                 </div>
             )}
 
+            {/* Add Person Modal */}
+            <AnimatePresence>
+                {showModal && (
+                    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => setShowModal(false)}
+                            style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)' }}
+                        />
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                            className="card"
+                            style={{ width: '100%', maxWidth: '500px', padding: '2rem', position: 'relative', zIndex: 1001 }}
+                        >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                                <h2 style={{ fontSize: '1.5rem', margin: 0 }}>Add Trusted Person</h2>
+                                <button onClick={() => setShowModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-text-muted)' }}>
+                                    <X size={24} />
+                                </button>
+                            </div>
+
+                            <form onSubmit={addPerson} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Full Name</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={newName}
+                                        onChange={(e) => setNewName(e.target.value)}
+                                        placeholder="e.g. Sarah Miller"
+                                        style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Email Address</label>
+                                    <input
+                                        type="email"
+                                        required
+                                        value={newEmail}
+                                        onChange={(e) => setNewEmail(e.target.value)}
+                                        placeholder="sarah@example.com"
+                                        style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
+                                    />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Relationship</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={newRelation}
+                                        onChange={(e) => setNewRelation(e.target.value)}
+                                        placeholder="e.g. Sister, Spouse, Lawyer"
+                                        style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
+                                    />
+                                </div>
+
+                                <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>
+                                    <button type="submit" className="btn btn-primary" style={{ flex: 1 }}>Add Person</button>
+                                    <button type="button" onClick={() => setShowModal(false)} className="btn btn-secondary">Cancel</button>
+                                </div>
+                            </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
         </div>
     );
 };
