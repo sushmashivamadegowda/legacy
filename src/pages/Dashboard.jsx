@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import gsap from 'gsap';
 import {
     Users,
     EnvelopeSimple,
@@ -21,28 +20,12 @@ import { useAuth } from '../context/AuthContext';
 const Dashboard = () => {
     const navigate = useNavigate();
     const { logout, user, token } = useAuth();
-    const cardsRef = useRef([]);
     const [counts, setCounts] = useState({});
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         fetchStats();
-        // Stagger animation for stat cards
-        if (!isLoading) {
-            gsap.fromTo(
-                cardsRef.current,
-                { y: 40, opacity: 0, scale: 0.9 },
-                {
-                    y: 0,
-                    opacity: 1,
-                    scale: 1,
-                    duration: 0.6,
-                    stagger: 0.1,
-                    ease: 'back.out(1.4)'
-                }
-            );
-        }
-    }, [isLoading]);
+    }, []);
 
     const fetchStats = async () => {
         setIsLoading(true);
@@ -71,21 +54,40 @@ const Dashboard = () => {
         { title: 'Beneficiaries', count: counts.beneficiaries || 0, icon: <Users size={32} color="#7C3AED" />, color: 'rgba(124, 58, 237, 0.15)', border: '#7C3AED', slug: 'beneficiaries' },
     ];
 
+    // Animation Variants
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: { staggerChildren: 0.1 }
+        }
+    };
+
+    const itemVariants = {
+        hidden: { y: 20, opacity: 0, scale: 0.95 },
+        visible: {
+            y: 0,
+            opacity: 1,
+            scale: 1,
+            transition: { type: 'spring', stiffness: 100, damping: 12 }
+        }
+    };
+
     const SkeletonCard = () => (
-        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--color-border)' }}>
-            <div className="skeleton" style={{ width: '60px', height: '60px', borderRadius: '16px' }}></div>
+        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--color-border)', height: '110px' }}>
+            <div className="skeleton" style={{ width: '60px', height: '60px', borderRadius: '16px', flexShrink: 0 }}></div>
             <div style={{ flex: 1 }}>
-                <div className="skeleton" style={{ width: '40px', height: '2rem', marginBottom: '0.5rem' }}></div>
-                <div className="skeleton" style={{ width: '80%', height: '0.9rem' }}></div>
+                <div className="skeleton" style={{ width: '40px', height: '2rem', marginBottom: '0.4rem', borderRadius: '4px' }}></div>
+                <div className="skeleton" style={{ width: '120px', height: '0.9rem', borderRadius: '4px' }}></div>
             </div>
         </div>
     );
 
     return (
         <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5 }}
+            initial="hidden"
+            animate="visible"
+            variants={containerVariants}
             className="dashboard"
             style={{ paddingBottom: '4rem', minHeight: '100vh' }}
         >
@@ -143,9 +145,7 @@ const Dashboard = () => {
             <main className="container" style={{ paddingTop: '3rem' }}>
                 {/* Welcome Section */}
                 <motion.section
-                    initial={{ y: 20, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 }}
+                    variants={itemVariants}
                     style={{ marginBottom: '3rem' }}
                 >
                     <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem', color: 'var(--color-text-main)' }}>
@@ -158,14 +158,17 @@ const Dashboard = () => {
                 </motion.section>
 
                 {/* Quick Stats Grid */}
-                <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
+                <motion.section
+                    variants={containerVariants}
+                    style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}
+                >
                     {isLoading ? (
                         [...Array(stats.length)].map((_, i) => <SkeletonCard key={i} />)
                     ) : (
                         stats.map((stat, index) => (
                             <motion.div
                                 key={index}
-                                ref={el => cardsRef.current[index] = el}
+                                variants={itemVariants}
                                 whileHover={{ y: -8, scale: 1.02 }}
                                 onClick={() => navigate(`/assets/${stat.slug}`)}
                                 className="card"
@@ -175,7 +178,8 @@ const Dashboard = () => {
                                     gap: '1.5rem',
                                     cursor: 'pointer',
                                     background: `linear-gradient(135deg, ${stat.color}, rgba(26, 35, 71, 0.8))`,
-                                    borderLeft: `3px solid ${stat.border}`
+                                    borderLeft: `3px solid ${stat.border}`,
+                                    height: '110px'
                                 }}
                             >
                                 <div style={{
@@ -192,22 +196,21 @@ const Dashboard = () => {
                                 }}>
                                     {stat.icon}
                                 </div>
-                                <div>
+                                <div style={{ overflow: 'hidden' }}>
                                     <h3 style={{ fontSize: '2rem', marginBottom: '0', lineHeight: 1, color: 'var(--color-text-main)' }}>{stat.count}</h3>
-                                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>{stat.title}</span>
+                                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>{stat.title}</span>
                                 </div>
                             </motion.div>
                         ))
                     )}
-                </section>
+                </motion.section>
 
                 {/* Main Actions */}
-                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '2rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '2rem', alignItems: 'start' }}>
                     {/* Recent Activity */}
                     <motion.section
-                        initial={{ x: -40, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.4 }}
+                        variants={itemVariants}
+                        style={{ minWidth: '400px' }}
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                             <h2 style={{ fontSize: '1.5rem', marginBottom: 0, color: 'var(--color-text-main)' }}>Recent Activity</h2>
@@ -244,11 +247,7 @@ const Dashboard = () => {
                     </motion.section>
 
                     {/* Quick Add & Status */}
-                    <motion.section
-                        initial={{ x: 40, opacity: 0 }}
-                        animate={{ x: 0, opacity: 1 }}
-                        transition={{ delay: 0.5 }}
-                    >
+                    <motion.section variants={itemVariants}>
                         <h2 style={{ fontSize: '1.5rem', marginBottom: '1.5rem', color: 'var(--color-text-main)' }}>Quick Actions</h2>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
                             <motion.button
