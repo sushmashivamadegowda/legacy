@@ -45,6 +45,16 @@ const AssetList = () => {
 
     const categoryDisplayName = categoryNames[category] || category;
 
+    const SkeletonAssetCard = () => (
+        <div className="card" style={{ padding: '1.5rem', display: 'flex', alignItems: 'flex-start', gap: '1rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--color-border)' }}>
+            <div className="skeleton" style={{ width: '40px', height: '40px', borderRadius: '12px', flexShrink: 0 }}></div>
+            <div style={{ flex: 1 }}>
+                <div className="skeleton" style={{ width: '70%', height: '1.1rem', marginBottom: '0.25rem' }}></div>
+                <div className="skeleton" style={{ width: '40%', height: '0.85rem' }}></div>
+            </div>
+        </div>
+    );
+
     return (
         <div className="container animate-fade-in" style={{ padding: '2rem 1.5rem 4rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
@@ -55,7 +65,9 @@ const AssetList = () => {
             </div>
 
             {loading ? (
-                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--color-text-muted)' }}>Loading assets...</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+                    {[...Array(6)].map((_, i) => <SkeletonAssetCard key={i} />)}
+                </div>
             ) : assets.length === 0 ? (
                 <div className="card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
                     <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>📂</div>

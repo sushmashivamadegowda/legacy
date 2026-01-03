@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CaretLeft, CloudArrowUp, Eye, Users } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
@@ -14,6 +15,14 @@ const AddInfo = () => {
     const [isUploading, setIsUploading] = useState(false);
     const [beneficiaries, setBeneficiaries] = useState([]);
     const [isLoadingBeneficiaries, setIsLoadingBeneficiaries] = useState(true);
+
+    // Specialized fields for Vault
+    const [vaultUrl, setVaultUrl] = useState('');
+    const [vaultUsername, setVaultUsername] = useState('');
+    const [vaultPassword, setVaultPassword] = useState('');
+
+    // For Messages
+    const [recipient, setRecipient] = useState('');
 
     useEffect(() => {
         if (token) {
@@ -165,17 +174,94 @@ const AddInfo = () => {
                         </div>
                     </div>
 
-                    {/* Description / Details */}
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Details / Instructions</label>
-                        <textarea
-                            rows="4"
-                            placeholder="Add any login details, account numbers, or personal notes here..."
-                            value={details}
-                            onChange={(e) => setDetails(e.target.value)}
-                            style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid var(--color-border)', fontSize: '1rem', fontFamily: 'inherit', resize: 'vertical' }}
-                        ></textarea>
-                    </div>
+                    {/* Dynamic Fields based on Category */}
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={category}
+                            initial={{ opacity: 0, x: 10 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            exit={{ opacity: 0, x: -10 }}
+                            transition={{ duration: 0.2 }}
+                            style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
+                        >
+                            {/* Vault Specific Fields */}
+                            {category === 'passvault' && (
+                                <>
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Username / Email</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. john.doe@gmail.com"
+                                                value={vaultUsername}
+                                                onChange={(e) => setVaultUsername(e.target.value)}
+                                                style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Password</label>
+                                            <input
+                                                type="text"
+                                                placeholder="••••••••"
+                                                value={vaultPassword}
+                                                onChange={(e) => setVaultPassword(e.target.value)}
+                                                style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
+                                            />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Website URL</label>
+                                        <input
+                                            type="url"
+                                            placeholder="https://example.com"
+                                            value={vaultUrl}
+                                            onChange={(e) => setVaultUrl(e.target.value)}
+                                            style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Messages Specific Fields */}
+                            {category === 'messages' && (
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Recipient Name (Optional)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="e.g. To my daughter"
+                                        value={recipient}
+                                        onChange={(e) => setRecipient(e.target.value)}
+                                        style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
+                                    />
+                                </div>
+                            )}
+
+                            {/* Chrome Passwords / WhatsApp / GDrive Instructions */}
+                            {(category === 'chromepass' || category === 'whatsapp' || category === 'gdrive') && (
+                                <div style={{ padding: '1rem', background: 'rgba(var(--color-primary-rgb), 0.05)', borderRadius: '12px', border: '1px solid rgba(var(--color-primary-rgb), 0.1)', fontSize: '0.9rem' }}>
+                                    <p style={{ margin: 0, color: 'var(--color-text-muted)' }}>
+                                        {category === 'chromepass' && "💡 Tip: To export your passwords, go to Chrome Settings > Passwords > Export Passwords (.csv file)."}
+                                        {category === 'whatsapp' && "💡 Tip: Use WhatsApp 'Export Chat' (without media) to get a lightweight .txt or .zip file of your backups."}
+                                        {category === 'gdrive' && "💡 Tip: Use Google Takeout to export specific folders or photos as a ZIP archive for easier storage."}
+                                    </p>
+                                </div>
+                            )}
+
+                            {/* Common Details / Instructions */}
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                                    {category === 'messages' ? 'Your Message' : 'Details / Instructions'}
+                                </label>
+                                <textarea
+                                    rows="4"
+                                    placeholder={category === 'messages' ? "Write your final words here..." : "Add any account details, recovery keys, or personal notes..."}
+                                    value={details}
+                                    onChange={(e) => setDetails(e.target.value)}
+                                    style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', fontSize: '1rem', fontFamily: 'inherit', resize: 'vertical', outline: 'none' }}
+                                ></textarea>
+                            </div>
+                        </motion.div>
+                    </AnimatePresence>
 
                     {/* File Upload (Functional) */}
                     <div

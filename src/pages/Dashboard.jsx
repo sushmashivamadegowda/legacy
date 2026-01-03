@@ -23,25 +23,29 @@ const Dashboard = () => {
     const { logout, user, token } = useAuth();
     const cardsRef = useRef([]);
     const [counts, setCounts] = useState({});
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         fetchStats();
         // Stagger animation for stat cards
-        gsap.fromTo(
-            cardsRef.current,
-            { y: 40, opacity: 0, scale: 0.9 },
-            {
-                y: 0,
-                opacity: 1,
-                scale: 1,
-                duration: 0.6,
-                stagger: 0.1,
-                ease: 'back.out(1.4)'
-            }
-        );
-    }, []);
+        if (!isLoading) {
+            gsap.fromTo(
+                cardsRef.current,
+                { y: 40, opacity: 0, scale: 0.9 },
+                {
+                    y: 0,
+                    opacity: 1,
+                    scale: 1,
+                    duration: 0.6,
+                    stagger: 0.1,
+                    ease: 'back.out(1.4)'
+                }
+            );
+        }
+    }, [isLoading]);
 
     const fetchStats = async () => {
+        setIsLoading(true);
         try {
             const response = await fetch('http://localhost:8000/user/stats', {
                 headers: { 'Authorization': `Bearer ${token}` }
@@ -52,6 +56,8 @@ const Dashboard = () => {
             }
         } catch (error) {
             console.error('Error fetching stats:', error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -64,6 +70,16 @@ const Dashboard = () => {
         { title: 'WhatsApp Backups', count: counts.whatsapp || 0, icon: <WhatsappLogo size={32} color="#25D366" />, color: 'rgba(37, 211, 102, 0.15)', border: '#25D366', slug: 'whatsapp' },
         { title: 'Beneficiaries', count: counts.beneficiaries || 0, icon: <Users size={32} color="#7C3AED" />, color: 'rgba(124, 58, 237, 0.15)', border: '#7C3AED', slug: 'beneficiaries' },
     ];
+
+    const SkeletonCard = () => (
+        <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--color-border)' }}>
+            <div className="skeleton" style={{ width: '60px', height: '60px', borderRadius: '16px' }}></div>
+            <div style={{ flex: 1 }}>
+                <div className="skeleton" style={{ width: '40px', height: '2rem', marginBottom: '0.5rem' }}></div>
+                <div className="skeleton" style={{ width: '80%', height: '0.9rem' }}></div>
+            </div>
+        </div>
+    );
 
     return (
         <motion.div
@@ -143,42 +159,46 @@ const Dashboard = () => {
 
                 {/* Quick Stats Grid */}
                 <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-                    {stats.map((stat, index) => (
-                        <motion.div
-                            key={index}
-                            ref={el => cardsRef.current[index] = el}
-                            whileHover={{ y: -8, scale: 1.02 }}
-                            onClick={() => navigate(`/assets/${stat.slug}`)}
-                            className="card"
-                            style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '1.5rem',
-                                cursor: 'pointer',
-                                background: `linear-gradient(135deg, ${stat.color}, rgba(26, 35, 71, 0.8))`,
-                                borderLeft: `3px solid ${stat.border}`
-                            }}
-                        >
-                            <div style={{
-                                width: '60px',
-                                height: '60px',
-                                borderRadius: '16px',
-                                background: stat.color,
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                flexShrink: 0,
-                                border: `1px solid ${stat.border}60`,
-                                boxShadow: `0 0 20px ${stat.border}40`
-                            }}>
-                                {stat.icon}
-                            </div>
-                            <div>
-                                <h3 style={{ fontSize: '2rem', marginBottom: '0', lineHeight: 1, color: 'var(--color-text-main)' }}>{stat.count}</h3>
-                                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>{stat.title}</span>
-                            </div>
-                        </motion.div>
-                    ))}
+                    {isLoading ? (
+                        [...Array(stats.length)].map((_, i) => <SkeletonCard key={i} />)
+                    ) : (
+                        stats.map((stat, index) => (
+                            <motion.div
+                                key={index}
+                                ref={el => cardsRef.current[index] = el}
+                                whileHover={{ y: -8, scale: 1.02 }}
+                                onClick={() => navigate(`/assets/${stat.slug}`)}
+                                className="card"
+                                style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '1.5rem',
+                                    cursor: 'pointer',
+                                    background: `linear-gradient(135deg, ${stat.color}, rgba(26, 35, 71, 0.8))`,
+                                    borderLeft: `3px solid ${stat.border}`
+                                }}
+                            >
+                                <div style={{
+                                    width: '60px',
+                                    height: '60px',
+                                    borderRadius: '16px',
+                                    background: stat.color,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    flexShrink: 0,
+                                    border: `1px solid ${stat.border}60`,
+                                    boxShadow: `0 0 20px ${stat.border}40`
+                                }}>
+                                    {stat.icon}
+                                </div>
+                                <div>
+                                    <h3 style={{ fontSize: '2rem', marginBottom: '0', lineHeight: 1, color: 'var(--color-text-main)' }}>{stat.count}</h3>
+                                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>{stat.title}</span>
+                                </div>
+                            </motion.div>
+                        ))
+                    )}
                 </section>
 
                 {/* Main Actions */}
