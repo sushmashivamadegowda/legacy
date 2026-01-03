@@ -89,7 +89,9 @@ const AddInfo = () => {
         const toastId = toast.loading('Uploading asset to secure storage...');
 
         const formData = new FormData();
-        formData.append('title', title);
+        // Fallback to filename if title is empty
+        const finalTitle = title || (file ? file.name : `${category} ${new Date().toLocaleDateString()}`);
+        formData.append('title', finalTitle);
         formData.append('category', category);
         formData.append('details', details);
         formData.append('file', file);
@@ -129,18 +131,19 @@ const AddInfo = () => {
             <div className="card">
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
-                    {/* Title Input */}
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Title / Name</label>
-                        <input
-                            type="text"
-                            placeholder="e.g. Netflix Subscription, Life Insurance Policy"
-                            required
-                            value={title}
-                            onChange={(e) => setTitle(e.target.value)}
-                            style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid var(--color-border)', fontSize: '1rem', outline: 'none' }}
-                        />
-                    </div>
+                    {/* Title Input - Only show for multi-use categories */}
+                    {['photosvids', 'passvault', 'messages'].includes(category) && (
+                        <div>
+                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Title / Name</label>
+                            <input
+                                type="text"
+                                placeholder={category === 'passvault' ? "e.g. Netflix, Gmail, Work Laptop" : "e.g. Vacation 2024, To my Family"}
+                                value={title}
+                                onChange={(e) => setTitle(e.target.value)}
+                                style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', fontSize: '1rem', outline: 'none' }}
+                            />
+                        </div>
+                    )}
 
                     {/* Category Select */}
                     <div>
