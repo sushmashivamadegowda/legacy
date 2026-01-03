@@ -277,19 +277,72 @@ const Dashboard = () => {
                             whileHover={{ scale: 1.02 }}
                             className="card"
                             style={{
-                                background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(26, 35, 71, 0.8) 100%)',
+                                background: counts.is_emergency
+                                    ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(26, 35, 71, 0.8) 100%)'
+                                    : 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(26, 35, 71, 0.8) 100%)',
                                 padding: '1.5rem',
-                                borderLeft: '3px solid #10B981'
+                                borderLeft: counts.is_emergency ? '3px solid #EF4444' : '3px solid #10B981',
+                                position: 'relative',
+                                overflow: 'hidden'
                             }}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                                <Clock size={24} color="#10B981" />
-                                <h3 style={{ fontSize: '1rem', margin: 0, color: 'var(--color-text-main)' }}>Last Check-in</h3>
+                                <Clock size={24} color={counts.is_emergency ? "#EF4444" : "#10B981"} />
+                                <h3 style={{ fontSize: '1rem', margin: 0, color: 'var(--color-text-main)' }}>
+                                    {counts.is_emergency ? "Emergency Mode Active" : "Check-in Status"}
+                                </h3>
                             </div>
-                            <p style={{ fontSize: '1.75rem', fontWeight: 'bold', margin: '0 0 0.5rem', color: '#10B981' }}>Today</p>
-                            <p style={{ fontSize: '0.85rem', margin: 0, color: 'var(--color-text-muted)' }}>
-                                Next check-in required in <strong style={{ color: '#10B981' }}>30 days</strong>
-                            </p>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+                                <div>
+                                    <p style={{ fontSize: '1.75rem', fontWeight: 'bold', margin: '0 0 0.5rem', color: counts.is_emergency ? '#EF4444' : '#10B981' }}>
+                                        {counts.days_remaining} {counts.days_remaining === 1 ? 'Day' : 'Days'}
+                                    </p>
+                                    <p style={{ fontSize: '0.85rem', margin: 0, color: 'var(--color-text-muted)' }}>
+                                        until next check-in
+                                    </p>
+                                </div>
+
+                                <motion.button
+                                    whileHover={{ scale: 1.05 }}
+                                    whileTap={{ scale: 0.95 }}
+                                    onClick={async () => {
+                                        try {
+                                            const response = await fetch('http://localhost:8000/user/check-in', {
+                                                method: 'POST',
+                                                headers: { 'Authorization': `Bearer ${token}` }
+                                            });
+                                            if (response.ok) {
+                                                toast.success('Successfully checked in!');
+                                                fetchStats();
+                                            }
+                                        } catch (error) {
+                                            toast.error('Check-in failed');
+                                        }
+                                    }}
+                                    className="btn btn-secondary"
+                                    style={{
+                                        padding: '0.5rem 0.8rem',
+                                        fontSize: '0.8rem',
+                                        background: 'rgba(255,255,255,0.05)',
+                                        borderColor: 'rgba(255,255,255,0.1)'
+                                    }}
+                                >
+                                    Check In Now
+                                </motion.button>
+                            </div>
+
+                            {counts.is_emergency && (
+                                <div style={{
+                                    marginTop: '1rem',
+                                    paddingTop: '1rem',
+                                    borderTop: '1px solid rgba(239, 68, 68, 0.2)',
+                                    fontSize: '0.8rem',
+                                    color: '#EF4444'
+                                }}>
+                                    ⚠️ Beneficiaries have been granted access.
+                                </div>
+                            )}
                         </motion.div>
                     </motion.section>
                 </div>

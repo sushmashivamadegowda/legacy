@@ -1,8 +1,10 @@
+```python
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from typing import List
+from datetime import datetime, timedelta
 from jose import JWTError, jwt
 import os
 
@@ -25,7 +27,7 @@ app.add_middleware(
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> models.User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -127,7 +129,7 @@ def get_asset_view_url(
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
     
-    url = s3_utils.get_presigned_url(asset.s3_key)
+    url = s3_utils.get_presigned_url(asset.object_name) # Changed from asset.s3_key to asset.object_name
     if not url:
         raise HTTPException(status_code=500, detail="Could not generate access URL")
     
@@ -135,21 +137,38 @@ def get_asset_view_url(
 
 @app.get("/user/stats")
 def get_user_stats(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    # Calculate counts for dashboard cards
-    categories = ['photosvids', 'chromepass', 'gdrive', 'messages', 'passvault', 'whatsapp']
-    stats = {}
-    for cat in categories:
-        count = db.query(models.Asset).filter(
-            models.Asset.category == cat,
-            models.Asset.user_id == current_user.id
-        ).count()
-        stats[cat] = count
+    photosvids = db.query(models.Asset).filter(models.Asset.user_id == current_user.id, models.Asset.category == "photosvids").count()
+    chromepass = db.query(models.Asset).filter(models.Asset.user_id == current_user.id, models.Asset.category == "chromepass").count()
+    gdrive = db.query(models.Asset).filter(models.Asset.user_id == current_user.id, models.Asset.category == "gdrive").count()
+    messages = db.query(models.Asset).filter(models.Asset.user_id == current_user.id, models.Asset.category == "messages").count()
+    passvault = db.query(models.Asset).filter(models.Asset.user_id == current_user.id, models.Asset.category == "passvault").count()
+    whatsapp = db.query(models.Asset).filter(models.Asset.user_id == current_user.id, models.Asset.category == "whatsapp").count()
+    beneficiaries = db.query(models.Beneficiary).filter(models.Beneficiary.user_id == current_user.id).count()
     
-    # Count beneficiaries separately
-    stats['beneficiaries'] = db.query(models.Beneficiary).filter(
-        models.Beneficiary.user_id == current_user.id
-    ).count()
-    return stats
+    # Check-in logic
+    next_check_in = current_user.last_check_in + timedelta(days=current_user.check_in_frequency_days)
+    days_remaining = (next_check_in - datetime.now(next_check_in.tzinfo)).days
+    
+    return {
+        "photosvids": photosvids,
+        "chromepass": chromepass,
+        "gdrive": gdrive,
+        "messages": messages,
+        "passvault": passvault,
+        "whatsapp": whatsapp,
+        "beneficiaries": beneficiaries,
+        "last_check_in": current_user.last_check_in,
+        "days_remaining": max(0, days_remaining),
+        "is_emergency": current_user.is_emergency_mode
+    }
+
+@app.post("/user/check-in")
+def check_in(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    current_user.last_check_in = datetime.now()
+    current_user.is_emergency_mode = False # Reset emergency mode if they check in
+    db.commit()
+    db.refresh(current_user)
+    return {"message": "Check-in successful", "last_check_in": current_user.last_check_in}
 
 @app.get("/beneficiaries", response_model=List[schemas.Beneficiary])
 def list_beneficiaries(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -192,3 +211,67 @@ def toggle_beneficiary_permission(beneficiary_id: int, perm_type: str, current_u
         db.refresh(db_beneficiary)
         return db_beneficiary
     raise HTTPException(status_code=400, detail="Invalid permission type")
+
+@app.post("/beneficiary/claim-access")
+def claim_access(owner_username: str = Form(...), beneficiary_email: str = Form(...), db: Session = Depends(get_db)):
+    # 1. Find owner
+    owner = db.query(models.User).filter(models.User.username == owner_username).first()
+    if not owner:
+        raise HTTPException(status_code=404, detail="Vault owner not found")
+        
+    # 2. Check if owner is in emergency mode
+    # For simulation purposes, we can also trigger it here if they are overdue
+    next_check_in = owner.last_check_in + timedelta(days=owner.check_in_frequency_days)
+    if not owner.is_emergency_mode and datetime.now(next_check_in.tzinfo) > next_check_in + timedelta(days=7):
+        owner.is_emergency_mode = True
+        db.commit()
+        
+    if not owner.is_emergency_mode:
+        raise HTTPException(status_code=403, detail="Emergency mode not active for this vault")
+        
+    # 3. Verify beneficiary
+    beneficiary = db.query(models.Beneficiary).filter(
+        models.Beneficiary.user_id == owner.id, 
+        models.Beneficiary.email == beneficiary_email
+    ).first()
+    
+    if not beneficiary:
+        raise HTTPException(status_code=403, detail="Access denied: You are not a registered beneficiary for this vault")
+        
+    # 4. Generate temporary access token for beneficiary
+    access_token = auth_utils.create_access_token(
+        data={"sub": f"beneficiary:{beneficiary.id}", "owner_id": owner.id}
+    )
+    return {"access_token": access_token, "token_type": "bearer", "owner_name": owner.username}
+
+@app.get("/emergency/assets")
+def get_emergency_assets(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    # Verify token and extract beneficiary info
+    try:
+        payload = jwt.decode(token, auth_utils.SECRET_KEY, algorithms=[auth_utils.ALGORITHM])
+        sub: str = payload.get("sub")
+        if not sub or not sub.startswith("beneficiary:"):
+            raise HTTPException(status_code=401, detail="Invalid beneficiary token")
+        beneficiary_id = int(sub.split(":")[1])
+        owner_id = payload.get("owner_id")
+    except Exception:
+        raise HTTPException(status_code=401, detail="Invalid beneficiary token")
+        
+    beneficiary = db.query(models.Beneficiary).filter(models.Beneficiary.id == beneficiary_id).first()
+    if not beneficiary:
+        raise HTTPException(status_code=404, detail="Beneficiary not found")
+        
+    # Filter assets based on beneficiary permissions
+    allowed_categories = []
+    if beneficiary.can_access_photos: allowed_categories.append("photosvids")
+    if beneficiary.can_access_docs: allowed_categories.append("docs")
+    if beneficiary.can_access_messages: allowed_categories.append("messages")
+    # Vault and others might be granted by default or specific flags
+    allowed_categories.extend(["chromepass", "gdrive", "passvault", "whatsapp"]) 
+    
+    assets = db.query(models.Asset).filter(
+        models.Asset.user_id == owner_id,
+        models.Asset.category.in_(allowed_categories)
+    ).all()
+    
+    return assets

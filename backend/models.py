@@ -1,4 +1,5 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey, Boolean
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, Boolean, DateTime
+from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from .database import Base
 
@@ -8,6 +9,9 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True, index=True)
     hashed_password = Column(String)
+    last_check_in = Column(DateTime(timezone=True), server_default=func.now())
+    check_in_frequency_days = Column(Integer, default=30)
+    is_emergency_mode = Column(Boolean, default=False)
 
     configs = relationship("UserConfig", back_populates="owner")
     assets = relationship("Asset", back_populates="owner")

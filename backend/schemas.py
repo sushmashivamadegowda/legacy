@@ -1,5 +1,6 @@
 from pydantic import BaseModel
 from typing import Optional, List
+from datetime import datetime
 
 class UserBase(BaseModel):
     username: str
@@ -9,6 +10,9 @@ class UserCreate(UserBase):
 
 class User(UserBase):
     id: int
+    last_check_in: datetime
+    check_in_frequency_days: int
+    is_emergency_mode: bool
     
     class Config:
         from_attributes = True
