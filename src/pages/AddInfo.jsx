@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { CaretLeft, CloudArrowUp, Eye } from '@phosphor-icons/react';
+import { CaretLeft, CloudArrowUp, Eye, Users } from '@phosphor-icons/react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
@@ -12,6 +12,56 @@ const AddInfo = () => {
     const [details, setDetails] = useState('');
     const [file, setFile] = useState(null);
     const [isUploading, setIsUploading] = useState(false);
+    const [beneficiaries, setBeneficiaries] = useState([]);
+    const [isLoadingBeneficiaries, setIsLoadingBeneficiaries] = useState(true);
+
+    useEffect(() => {
+        if (token) {
+            fetchBeneficiaries();
+        }
+    }, [token]);
+
+    const fetchBeneficiaries = async () => {
+        try {
+            const response = await fetch('http://localhost:8000/beneficiaries', {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (response.ok) {
+                const data = await response.json();
+                setBeneficiaries(data);
+            }
+        } catch (error) {
+            console.error('Error fetching beneficiaries:', error);
+        } finally {
+            setIsLoadingBeneficiaries(false);
+        }
+    };
+
+    const getPrivacyText = () => {
+        if (isLoadingBeneficiaries) return 'Loading privacy settings...';
+
+        // Map category to permission type
+        let permType = 'docs';
+        if (category === 'photosvids') permType = 'photos';
+        else if (category === 'messages') permType = 'messages';
+
+        const authorisedPeople = beneficiaries.filter(b => b[`can_access_${permType}`]);
+
+        if (authorisedPeople.length === 0) {
+            return <span>Only <strong>you</strong>. No contacts have permission for this category.</span>;
+        }
+
+        const names = authorisedPeople.map(p => p.name);
+        if (names.length === 1) {
+            return <span>Visible to <strong>{names[0]}</strong> after your digital legacy is triggered.</span>;
+        }
+
+        if (names.length === 2) {
+            return <span>Visible to <strong>{names[0]}</strong> and <strong>{names[1]}</strong> after your digital legacy is triggered.</span>;
+        }
+
+        return <span>Visible to <strong>{names[0]}</strong> and <strong>{names.length - 1} others</strong> after your digital legacy is triggered.</span>;
+    };
 
     const handleFileChange = (e) => {
         if (e.target.files && e.target.files[0]) {
@@ -146,10 +196,18 @@ const AddInfo = () => {
                     {/* Visibility */}
                     <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Who can see this?</label>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: '#F0F9FF', padding: '1rem', borderRadius: '12px', border: '1px solid #BAE6FD' }}>
-                            <Eye size={24} color="#0284C7" />
-                            <span style={{ fontSize: '0.9rem', color: '#0369A1' }}>Visible to <strong>Sarah Miller</strong> and <strong>David Chen</strong> after inactive period.</span>
-                            <button type="button" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#0284C7', textDecoration: 'underline', fontSize: '0.9rem' }}>Edit</button>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'rgba(2, 132, 199, 0.05)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(2, 132, 199, 0.1)' }}>
+                            <Eye size={24} color="var(--color-primary)" />
+                            <span style={{ fontSize: '0.9rem', color: 'var(--color-text-main)', flex: 1 }}>
+                                {getPrivacyText()}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => navigate('/trusted')}
+                                style={{ background: 'none', border: 'none', color: 'var(--color-primary)', textDecoration: 'underline', fontSize: '0.9rem', cursor: 'pointer', fontWeight: '600' }}
+                            >
+                                Edit
+                            </button>
                         </div>
                     </div>
 
