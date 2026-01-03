@@ -22,7 +22,7 @@ export const AuthProvider = ({ children }) => {
         formData.append('username', username);
         formData.append('password', password);
 
-        const response = await fetch('http://localhost:8000/token', {
+        const response = await fetch('http://supabaseurl.com/token', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/x-www-form-urlencoded',

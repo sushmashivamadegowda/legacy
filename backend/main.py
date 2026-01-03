@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 from jose import JWTError, jwt
 import os
 
-from . import models, database, s3_utils, auth_utils, schemas
-from .database import engine, get_db
+import models, database, s3_utils, auth_utils, schemas
+from database import engine, get_db
 
 # Create database tables
 models.Base.metadata.create_all(bind=engine)
@@ -67,7 +67,7 @@ def register_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
     db_user = db.query(models.User).filter(models.User.username == user.username).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Username already registered")
-    hashed_password = auth_utils.get_password_hash(user.password)
+    hashed_password = auth_utils.get_password_hash(user.password[:72])
     new_user = models.User(username=user.username, hashed_password=hashed_password)
     db.add(new_user)
     db.commit()
