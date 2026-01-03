@@ -9,6 +9,7 @@ const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const { login, register } = useAuth();
 
     const handleSubmit = async (e) => {
@@ -19,6 +20,7 @@ const Login = () => {
             return;
         }
 
+        setIsLoading(true);
         const toastId = toast.loading(isLogin ? 'Signing in...' : 'Creating account...');
 
         try {
@@ -30,9 +32,11 @@ const Login = () => {
                 toast.success(isLogin ? 'Welcome back!' : 'Account created!', { id: toastId });
             } else {
                 toast.error(isLogin ? 'Invalid username or password' : 'Registration failed. Try a different username.', { id: toastId });
+                setIsLoading(false);
             }
         } catch (error) {
             toast.error('Connection error. Please try again.', { id: toastId });
+            setIsLoading(false);
         }
     };
 
@@ -101,8 +105,27 @@ const Login = () => {
                         </motion.div>
                     )}
 
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', background: isLogin ? 'var(--color-primary)' : 'var(--color-accent)' }}>
-                        {isLogin ? 'Sign In' : 'Sign Up'} <ArrowRight size={20} weight="bold" />
+                    <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="btn btn-primary"
+                        style={{
+                            width: '100%',
+                            padding: '1rem',
+                            marginTop: '0.5rem',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '0.5rem',
+                            background: isLogin ? 'var(--color-primary)' : 'var(--color-accent)',
+                            opacity: isLoading ? 0.7 : 1,
+                            cursor: isLoading ? 'not-allowed' : 'pointer'
+                        }}
+                    >
+                        {isLoading
+                            ? (isLogin ? 'Signing in...' : 'Creating account...')
+                            : <>{isLogin ? 'Sign In' : 'Sign Up'} <ArrowRight size={20} weight="bold" /></>
+                        }
                     </button>
                 </form>
 

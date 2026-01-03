@@ -137,30 +137,34 @@ def get_asset_view_url(
 
 @app.get("/user/stats")
 def get_user_stats(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
-    photosvids = db.query(models.Asset).filter(models.Asset.user_id == current_user.id, models.Asset.category == "photosvids").count()
-    chromepass = db.query(models.Asset).filter(models.Asset.user_id == current_user.id, models.Asset.category == "chromepass").count()
-    gdrive = db.query(models.Asset).filter(models.Asset.user_id == current_user.id, models.Asset.category == "gdrive").count()
-    messages = db.query(models.Asset).filter(models.Asset.user_id == current_user.id, models.Asset.category == "messages").count()
-    passvault = db.query(models.Asset).filter(models.Asset.user_id == current_user.id, models.Asset.category == "passvault").count()
-    whatsapp = db.query(models.Asset).filter(models.Asset.user_id == current_user.id, models.Asset.category == "whatsapp").count()
-    beneficiaries = db.query(models.Beneficiary).filter(models.Beneficiary.user_id == current_user.id).count()
+    # Optimized: Query all assets for this user once and count by category in memory or via grouped query
+    # For SQLite/Simple use cases, multiple counts are okay with indexes, but let's make it cleaner
+    categories = ['photosvids', 'chromepass', 'gdrive', 'messages', 'passvault', 'whatsapp']
     
-    # Check-in logic
+    # Efficiently get all counts in one go where possible
+    from sqlalchemy import func
+    category_counts = db.query(models.Asset.category, func.count(models.Asset.id)).filter(
+        models.Asset.user_id == current_user.id
+    ).group_by(models.Asset.category).all()
+    
+    stats = {cat: 0 for cat in categories}
+    for cat, count in category_counts:
+        if cat in stats:
+            stats[cat] = count
+            
+    stats['beneficiaries'] = db.query(models.Beneficiary).filter(models.Beneficiary.user_id == current_user.id).count()
+    
+    # Check-in logic (using indexed user fields)
     next_check_in = current_user.last_check_in + timedelta(days=current_user.check_in_frequency_days)
     days_remaining = (next_check_in - datetime.now(next_check_in.tzinfo)).days
     
-    return {
-        "photosvids": photosvids,
-        "chromepass": chromepass,
-        "gdrive": gdrive,
-        "messages": messages,
-        "passvault": passvault,
-        "whatsapp": whatsapp,
-        "beneficiaries": beneficiaries,
+    stats.update({
         "last_check_in": current_user.last_check_in,
         "days_remaining": max(0, days_remaining),
         "is_emergency": current_user.is_emergency_mode
-    }
+    })
+    
+    return stats
 
 @app.post("/user/check-in")
 def check_in(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
