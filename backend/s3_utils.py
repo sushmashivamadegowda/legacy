@@ -35,3 +35,15 @@ def upload_file_to_s3(file_content, object_name):
     except Exception as e:
         print(f"S3 upload error: {e}")
         return False
+def get_presigned_url(object_name, expiration=3600):
+    s3_client = get_s3_client()
+    try:
+        response = s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': settings.s3_bucket_name, 'Key': object_name},
+            ExpiresIn=expiration
+        )
+        return response
+    except Exception as e:
+        print(f"S3 presigned URL error: {e}")
+        return None

@@ -113,6 +113,26 @@ def get_assets(
         models.Asset.user_id == current_user.id
     ).all()
 
+@app.get("/assets/{asset_id}/view")
+def get_asset_view_url(
+    asset_id: int,
+    current_user: models.User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    asset = db.query(models.Asset).filter(
+        models.Asset.id == asset_id,
+        models.Asset.user_id == current_user.id
+    ).first()
+    
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    
+    url = s3_utils.get_presigned_url(asset.s3_key)
+    if not url:
+        raise HTTPException(status_code=500, detail="Could not generate access URL")
+    
+    return {"url": url}
+
 @app.get("/user/stats")
 def get_user_stats(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
     # Calculate counts for dashboard cards
