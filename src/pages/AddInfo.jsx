@@ -133,21 +133,20 @@ const AddInfo = () => {
 
                     {/* Title Input - Only show for multi-use categories */}
                     {['photosvids', 'passvault', 'messages'].includes(category) && (
-                        <div>
-                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Title / Name</label>
+                        <div className="input-group">
+                            <label className="input-label">Title / Name</label>
                             <input
                                 type="text"
+                                className="input-field"
                                 placeholder={category === 'passvault' ? "e.g. Netflix, Gmail, Work Laptop" : "e.g. Vacation 2024, To my Family"}
                                 value={title}
                                 onChange={(e) => setTitle(e.target.value)}
-                                style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', fontSize: '1rem', outline: 'none' }}
                             />
                         </div>
                     )}
 
-                    {/* Category Select */}
-                    <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Category</label>
+                    <div className="input-group">
+                        <label className="input-label">Category</label>
                         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
                             {[
                                 { id: 'photosvids', label: 'Photos' },
@@ -165,10 +164,12 @@ const AddInfo = () => {
                                         padding: '0.75rem 1.5rem',
                                         borderRadius: '50px',
                                         border: category === cat.id ? '2px solid var(--color-primary)' : '1px solid var(--color-border)',
-                                        background: category === cat.id ? '#E0F2F1' : 'white',
+                                        background: category === cat.id ? 'rgba(0, 217, 255, 0.15)' : 'rgba(255, 255, 255, 0.05)',
                                         color: category === cat.id ? 'var(--color-primary)' : 'var(--color-text-main)',
                                         textTransform: 'capitalize',
-                                        fontWeight: '500'
+                                        fontWeight: '500',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.3s ease'
                                     }}
                                 >
                                     {cat.label}
@@ -187,54 +188,58 @@ const AddInfo = () => {
                             transition={{ duration: 0.2 }}
                             style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}
                         >
-                            {/* Vault Specific Fields */}
+                            {/* Vault Specialized Fields */}
                             {category === 'passvault' && (
-                                <>
+                                <motion.div
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.25rem', background: 'rgba(0, 217, 255, 0.05)', borderRadius: '16px', border: '1px solid rgba(0, 217, 255, 0.1)' }}
+                                >
+                                    <div className="input-group">
+                                        <label className="input-label">Website URL</label>
+                                        <input
+                                            type="text"
+                                            className="input-field"
+                                            placeholder="https://netflix.com"
+                                            value={vaultUrl}
+                                            onChange={(e) => setVaultUrl(e.target.value)}
+                                        />
+                                    </div>
                                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Username / Email</label>
+                                        <div className="input-group">
+                                            <label className="input-label">Username</label>
                                             <input
                                                 type="text"
-                                                placeholder="e.g. john.doe@gmail.com"
+                                                className="input-field"
+                                                placeholder="Username"
                                                 value={vaultUsername}
                                                 onChange={(e) => setVaultUsername(e.target.value)}
-                                                style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
                                             />
                                         </div>
-                                        <div>
-                                            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Password</label>
+                                        <div className="input-group">
+                                            <label className="input-label">Password</label>
                                             <input
-                                                type="text"
+                                                type="password"
+                                                className="input-field"
                                                 placeholder="••••••••"
                                                 value={vaultPassword}
                                                 onChange={(e) => setVaultPassword(e.target.value)}
-                                                style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
                                             />
                                         </div>
                                     </div>
-                                    <div>
-                                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Website URL</label>
-                                        <input
-                                            type="url"
-                                            placeholder="https://example.com"
-                                            value={vaultUrl}
-                                            onChange={(e) => setVaultUrl(e.target.value)}
-                                            style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
-                                        />
-                                    </div>
-                                </>
+                                </motion.div>
                             )}
 
                             {/* Messages Specific Fields */}
                             {category === 'messages' && (
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Recipient Name (Optional)</label>
+                                <div className="input-group">
+                                    <label className="input-label">Recipient Name (Optional)</label>
                                     <input
                                         type="text"
+                                        className="input-field"
                                         placeholder="e.g. To my daughter"
                                         value={recipient}
                                         onChange={(e) => setRecipient(e.target.value)}
-                                        style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
                                     />
                                 </div>
                             )}
@@ -251,17 +256,18 @@ const AddInfo = () => {
                             )}
 
                             {/* Common Details / Instructions */}
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>
+                            <div className="input-group">
+                                <label className="input-label">
                                     {category === 'messages' ? 'Your Message' : 'Details / Instructions'}
                                 </label>
                                 <textarea
-                                    rows="4"
-                                    placeholder={category === 'messages' ? "Write your final words here..." : "Add any account details, recovery keys, or personal notes..."}
+                                    className="input-field"
+                                    rows="5"
+                                    placeholder={category === 'messages' ? "Write your message here..." : "e.g. The combination is 12-34-56..."}
                                     value={details}
                                     onChange={(e) => setDetails(e.target.value)}
-                                    style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', fontSize: '1rem', fontFamily: 'inherit', resize: 'vertical', outline: 'none' }}
-                                ></textarea>
+                                    style={{ resize: 'vertical', minHeight: '120px' }}
+                                />
                             </div>
                         </motion.div>
                     </AnimatePresence>

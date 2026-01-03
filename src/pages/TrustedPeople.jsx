@@ -199,37 +199,37 @@ const TrustedPeople = () => {
                             </div>
 
                             <form onSubmit={addPerson} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Full Name</label>
+                                <div className="input-group">
+                                    <label className="input-label">Full Name</label>
                                     <input
                                         type="text"
                                         required
+                                        className="input-field"
                                         value={newName}
                                         onChange={(e) => setNewName(e.target.value)}
                                         placeholder="e.g. Sarah Miller"
-                                        style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
                                     />
                                 </div>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Email Address</label>
+                                <div className="input-group">
+                                    <label className="input-label">Email Address</label>
                                     <input
                                         type="email"
                                         required
+                                        className="input-field"
                                         value={newEmail}
                                         onChange={(e) => setNewEmail(e.target.value)}
                                         placeholder="sarah@example.com"
-                                        style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
                                     />
                                 </div>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>Relationship</label>
+                                <div className="input-group">
+                                    <label className="input-label">Relationship</label>
                                     <input
                                         type="text"
                                         required
+                                        className="input-field"
                                         value={newRelation}
                                         onChange={(e) => setNewRelation(e.target.value)}
                                         placeholder="e.g. Sister, Spouse, Lawyer"
-                                        style={{ width: '100%', padding: '0.8rem', borderRadius: '12px', border: '1px solid var(--color-border)', background: 'rgba(255,255,255,0.03)', color: 'var(--color-text-main)', outline: 'none' }}
                                     />
                                 </div>
 
