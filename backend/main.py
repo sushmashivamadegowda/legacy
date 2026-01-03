@@ -1,8 +1,8 @@
-```python
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Form, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from typing import List
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
@@ -165,6 +165,40 @@ def get_user_stats(current_user: models.User = Depends(get_current_user), db: Se
     })
     
     return stats
+
+@app.get("/user/dashboard-data")
+def get_dashboard_data(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):
+    # 1. Stats (optimized grouping)
+    categories = ['photosvids', 'chromepass', 'gdrive', 'messages', 'passvault', 'whatsapp']
+    category_counts = db.query(models.Asset.category, func.count(models.Asset.id)).filter(
+        models.Asset.user_id == current_user.id
+    ).group_by(models.Asset.category).all()
+    
+    stats = {cat: 0 for cat in categories}
+    for cat, count in category_counts:
+        if cat in stats:
+            stats[cat] = count
+            
+    stats['beneficiaries'] = db.query(models.Beneficiary).filter(models.Beneficiary.user_id == current_user.id).count()
+    
+    # 2. Check-in logic
+    next_check_in = current_user.last_check_in + timedelta(days=current_user.check_in_frequency_days)
+    days_remaining = (next_check_in - datetime.now(next_check_in.tzinfo)).days
+    
+    # 3. Recent Assets
+    recent_assets = db.query(models.Asset).filter(
+        models.Asset.user_id == current_user.id
+    ).order_by(models.Asset.id.desc()).limit(5).all()
+    
+    return {
+        "stats": stats,
+        "check_in": {
+            "last_check_in": current_user.last_check_in,
+            "days_remaining": max(0, days_remaining),
+            "is_emergency": current_user.is_emergency_mode
+        },
+        "recent_activity": recent_assets
+    }
 
 @app.post("/user/check-in")
 def check_in(current_user: models.User = Depends(get_current_user), db: Session = Depends(get_db)):

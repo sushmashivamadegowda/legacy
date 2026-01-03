@@ -97,7 +97,7 @@ const AddInfo = () => {
         formData.append('file', file);
 
         try {
-            const response = await fetch('http://localhost:8000/upload', {
+            const response = await fetch('http://127.0.0.1:8000/upload', {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${token}`

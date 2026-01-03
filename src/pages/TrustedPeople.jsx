@@ -37,7 +37,7 @@ const TrustedPeople = () => {
         const permType = typeMap[type];
 
         try {
-            const response = await fetch(`http://localhost:8000/beneficiaries/${id}/toggle/${permType}`, {
+            const response = await fetch(`http://127.0.0.1:8000/beneficiaries/${id}/toggle/${permType}`, {
                 method: 'PATCH',
                 headers: { 'Authorization': `Bearer ${token}` }
             });

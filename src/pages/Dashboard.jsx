@@ -21,24 +21,28 @@ const Dashboard = () => {
     const navigate = useNavigate();
     const { logout, user, token } = useAuth();
     const [counts, setCounts] = useState({});
+    const [checkIn, setCheckIn] = useState({});
+    const [recentActivity, setRecentActivity] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        fetchStats();
+        fetchDashboardData();
     }, []);
 
-    const fetchStats = async () => {
+    const fetchDashboardData = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch('http://localhost:8000/user/stats', {
+            const response = await fetch('http://127.0.0.1:8000/user/dashboard-data', {
                 headers: { 'Authorization': `Bearer ${token}` }
             });
             if (response.ok) {
                 const data = await response.json();
-                setCounts(data);
+                setCounts(data.stats);
+                setCheckIn(data.check_in);
+                setRecentActivity(data.recent_activity);
             }
         } catch (error) {
-            console.error('Error fetching stats:', error);
+            console.error('Error fetching dashboard data:', error);
         } finally {
             setIsLoading(false);
         }
@@ -213,36 +217,44 @@ const Dashboard = () => {
                         style={{ minWidth: '400px' }}
                     >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                            <h2 style={{ fontSize: '1.5rem', marginBottom: 0, color: 'var(--color-text-main)' }}>Recent Activity</h2>
-                            <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }}>View All</button>
+                            <h2 style={{ fontSize: '1.5rem', marginBottom: 0, color: 'var(--color-text-main)' }}>Recent Assets</h2>
+                            <button className="btn btn-secondary" style={{ padding: '0.5rem 1rem', fontSize: '0.9rem' }} onClick={() => navigate('/assets/all')}>View All</button>
                         </div>
 
                         <div className="card" style={{ padding: '0' }}>
-                            {[
-                                { icon: <GoogleChromeLogo size={20} color="#F57C00" />, bg: 'rgba(245, 124, 0, 0.1)', title: 'Chrome Passwords Exported', time: 'Today • 47 passwords encrypted', status: true },
-                                { icon: <Image size={20} color="#EC407A" />, bg: 'rgba(236, 64, 122, 0.1)', title: 'Uploaded 12 Family Photos', time: '2 days ago • Assigned to Sarah', status: false },
-                                { icon: <Users size={20} color="#7C3AED" />, bg: 'rgba(124, 58, 237, 0.1)', title: 'Added David as Beneficiary', time: '1 week ago', status: false }
-                            ].map((activity, idx) => (
-                                <motion.div
-                                    key={idx}
-                                    whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.02)' }}
-                                    style={{
-                                        padding: '1.5rem',
-                                        borderBottom: idx < 2 ? '1px solid var(--color-border)' : 'none',
-                                        display: 'flex',
-                                        gap: '1rem',
-                                        alignItems: 'center',
-                                        opacity: idx === 2 ? 0.6 : 1
-                                    }}
-                                >
-                                    <div style={{ background: activity.bg, padding: '0.5rem', borderRadius: '50%' }}>{activity.icon}</div>
-                                    <div style={{ flex: 1 }}>
-                                        <div style={{ fontWeight: '600', color: 'var(--color-text-main)' }}>{activity.title}</div>
-                                        <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{activity.time}</div>
-                                    </div>
-                                    {activity.status && <CheckCircle size={20} color="#10B981" weight="fill" />}
-                                </motion.div>
-                            ))}
+                            {recentActivity.length === 0 ? (
+                                <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--color-text-muted)' }}>No recent activity</div>
+                            ) : (
+                                recentActivity.map((asset, idx) => (
+                                    <motion.div
+                                        key={asset.id}
+                                        whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.02)' }}
+                                        style={{
+                                            padding: '1.2rem 1.5rem',
+                                            borderBottom: idx < recentActivity.length - 1 ? '1px solid var(--color-border)' : 'none',
+                                            display: 'flex',
+                                            gap: '1rem',
+                                            alignItems: 'center'
+                                        }}
+                                    >
+                                        <div style={{
+                                            background: 'rgba(255,255,255,0.05)',
+                                            padding: '0.5rem',
+                                            borderRadius: '12px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center'
+                                        }}>
+                                            <Image size={20} color="var(--color-primary)" />
+                                        </div>
+                                        <div style={{ flex: 1, overflow: 'hidden' }}>
+                                            <div style={{ fontWeight: '600', color: 'var(--color-text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{asset.title || asset.file_name}</div>
+                                            <div style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>{asset.category}</div>
+                                        </div>
+                                        <CheckCircle size={18} color="#10B981" weight="fill" />
+                                    </motion.div>
+                                ))
+                            )}
                         </div>
                     </motion.section>
 
@@ -277,26 +289,26 @@ const Dashboard = () => {
                             whileHover={{ scale: 1.02 }}
                             className="card"
                             style={{
-                                background: counts.is_emergency
+                                background: checkIn.is_emergency
                                     ? 'linear-gradient(135deg, rgba(239, 68, 68, 0.15) 0%, rgba(26, 35, 71, 0.8) 100%)'
                                     : 'linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(26, 35, 71, 0.8) 100%)',
                                 padding: '1.5rem',
-                                borderLeft: counts.is_emergency ? '3px solid #EF4444' : '3px solid #10B981',
+                                borderLeft: checkIn.is_emergency ? '3px solid #EF4444' : '3px solid #10B981',
                                 position: 'relative',
                                 overflow: 'hidden'
                             }}
                         >
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1rem' }}>
-                                <Clock size={24} color={counts.is_emergency ? "#EF4444" : "#10B981"} />
+                                <Clock size={24} color={checkIn.is_emergency ? "#EF4444" : "#10B981"} />
                                 <h3 style={{ fontSize: '1rem', margin: 0, color: 'var(--color-text-main)' }}>
-                                    {counts.is_emergency ? "Emergency Mode Active" : "Check-in Status"}
+                                    {checkIn.is_emergency ? "Emergency Mode Active" : "Check-in Status"}
                                 </h3>
                             </div>
 
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                                 <div>
-                                    <p style={{ fontSize: '1.75rem', fontWeight: 'bold', margin: '0 0 0.5rem', color: counts.is_emergency ? '#EF4444' : '#10B981' }}>
-                                        {counts.days_remaining} {counts.days_remaining === 1 ? 'Day' : 'Days'}
+                                    <p style={{ fontSize: '1.75rem', fontWeight: 'bold', margin: '0 0 0.5rem', color: checkIn.is_emergency ? '#EF4444' : '#10B981' }}>
+                                        {checkIn.days_remaining} {checkIn.days_remaining === 1 ? 'Day' : 'Days'}
                                     </p>
                                     <p style={{ fontSize: '0.85rem', margin: 0, color: 'var(--color-text-muted)' }}>
                                         until next check-in
@@ -308,16 +320,16 @@ const Dashboard = () => {
                                     whileTap={{ scale: 0.95 }}
                                     onClick={async () => {
                                         try {
-                                            const response = await fetch('http://localhost:8000/user/check-in', {
+                                            const response = await fetch('http://127.0.0.1:8000/user/check-in', {
                                                 method: 'POST',
                                                 headers: { 'Authorization': `Bearer ${token}` }
                                             });
                                             if (response.ok) {
-                                                toast.success('Successfully checked in!');
-                                                fetchStats();
+                                                // toast.success('Successfully checked in!');
+                                                fetchDashboardData();
                                             }
                                         } catch (error) {
-                                            toast.error('Check-in failed');
+                                            // toast.error('Check-in failed');
                                         }
                                     }}
                                     className="btn btn-secondary"
@@ -332,7 +344,7 @@ const Dashboard = () => {
                                 </motion.button>
                             </div>
 
-                            {counts.is_emergency && (
+                            {checkIn.is_emergency && (
                                 <div style={{
                                     marginTop: '1rem',
                                     paddingTop: '1rem',
