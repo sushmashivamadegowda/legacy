@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }) => {
 
         if (error) {
             console.error('Registration error:', error.message);
-            return false;
+            return { success: false, error: error.message };
         }
 
         if (data.user) {
@@ -72,12 +72,12 @@ export const AuthProvider = ({ children }) => {
                 setUser(data.user);
                 setToken(data.session.access_token);
                 navigate('/dashboard');
+                return { success: true, session: true };
             } else {
-                alert('Registration successful! Please check your email for verification.');
+                return { success: true, session: false };
             }
-            return true;
         }
-        return false;
+        return { success: false };
     };
 
     const logout = async () => {

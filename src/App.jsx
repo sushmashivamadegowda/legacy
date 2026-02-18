@@ -43,7 +43,30 @@ function App() {
 
   return (
     <AuthProvider>
-      <Toaster position="top-right" reverseOrder={false} />
+      <Toaster
+        position="top-right"
+        reverseOrder={false}
+        toastOptions={{
+          style: {
+            background: 'var(--color-bg-card)',
+            color: 'var(--color-text-main)',
+            border: '1px solid var(--color-border)',
+            backdropFilter: 'blur(10px)',
+          },
+          success: {
+            iconTheme: {
+              primary: 'var(--color-primary)',
+              secondary: 'white',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#EF4444',
+              secondary: 'white',
+            },
+          },
+        }}
+      />
       <div className="app-container">
         <AnimatePresence mode="wait">
           <Routes location={location} key={location.pathname}>

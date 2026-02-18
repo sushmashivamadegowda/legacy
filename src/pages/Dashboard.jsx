@@ -17,6 +17,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../lib/supabase';
+import toast from 'react-hot-toast';
 
 const Dashboard = () => {
     const navigate = useNavigate();
@@ -31,6 +32,26 @@ const Dashboard = () => {
             fetchDashboardData();
         }
     }, [user]);
+
+    const handleCheckIn = async () => {
+        const tid = toast.loading('Checking in...');
+        try {
+            const { error } = await supabase
+                .from('profiles')
+                .update({
+                    last_check_in: new Date().toISOString(),
+                    is_emergency_mode: false
+                })
+                .eq('id', user.id);
+
+            if (error) throw error;
+            toast.success('Check-in successful!', { id: tid });
+            fetchDashboardData();
+        } catch (error) {
+            console.error('Check-in failed:', error);
+            toast.error('Check-in failed. Please try again.', { id: tid });
+        }
+    };
 
     const fetchDashboardData = async () => {
         setIsLoading(true);
@@ -61,23 +82,45 @@ const Dashboard = () => {
             setCounts(stats);
 
             // 3. Fetch Profile (Check-in status)
-            const { data: profile, error: profileError } = await supabase
+            let { data: profile, error: profileError } = await supabase
                 .from('profiles')
                 .select('*')
                 .eq('id', user.id)
                 .single();
 
+            // If profile doesn't exist (e.g. trigger didn't run), try to create it
+            if (profileError && profileError.code === 'PGRST116') {
+                const { data: newProfile, error: createError } = await supabase
+                    .from('profiles')
+                    .insert([
+                        {
+                            id: user.id,
+                            username: user.user_metadata?.username || user.email?.split('@')[0],
+                            last_check_in: new Date().toISOString()
+                        }
+                    ])
+                    .select()
+                    .single();
+
+                if (!createError) {
+                    profile = newProfile;
+                    profileError = null;
+                }
+            }
+
             if (profileError) throw profileError;
 
-            const nextCheckIn = new Date(profile.last_check_in);
-            nextCheckIn.setDate(nextCheckIn.getDate() + (profile.check_in_frequency_days || 30));
-            const daysRemaining = Math.max(0, Math.ceil((nextCheckIn - new Date()) / (1000 * 60 * 60 * 24)));
+            if (profile) {
+                const nextCheckIn = new Date(profile.last_check_in);
+                nextCheckIn.setDate(nextCheckIn.getDate() + (profile.check_in_frequency_days || 30));
+                const daysRemaining = Math.max(0, Math.ceil((nextCheckIn - new Date()) / (1000 * 60 * 60 * 24)));
 
-            setCheckIn({
-                last_check_in: profile.last_check_in,
-                days_remaining: daysRemaining,
-                is_emergency: profile.is_emergency_mode
-            });
+                setCheckIn({
+                    last_check_in: profile.last_check_in,
+                    days_remaining: daysRemaining,
+                    is_emergency: profile.is_emergency_mode
+                });
+            }
 
             // 4. Fetch Recent Activity
             const { data: recent, error: recentError } = await supabase
@@ -156,12 +199,13 @@ const Dashboard = () => {
                         <motion.button
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.95 }}
+                            onClick={() => toast('No new notifications', { icon: '🔔' })}
                             className="btn-icon"
-                            style={{ background: 'none', border: 'none', position: 'relative', cursor: 'pointer' }}
+                            style={{ background: 'none', border: 'none', position: 'relative', cursor: 'pointer', padding: '8px' }}
                         >
                             <Bell size={24} color="var(--color-text-main)" />
                             <span style={{
-                                position: 'absolute', top: -2, right: -2, width: '10px', height: '10px',
+                                position: 'absolute', top: 6, right: 6, width: '10px', height: '10px',
                                 background: '#EF4444', borderRadius: '50%', border: '2px solid var(--color-bg-main)',
                                 boxShadow: '0 0 10px #EF4444'
                             }}></span>
@@ -181,11 +225,30 @@ const Dashboard = () => {
                     style={{ marginBottom: '3rem' }}
                 >
                     <h1 style={{ fontSize: '2.5rem', marginBottom: '0.5rem', color: 'var(--color-text-main)' }}>
-                        Good evening, <span style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{user?.username}</span>.
+                        Good evening, <span style={{ background: 'linear-gradient(135deg, var(--color-primary), var(--color-accent))', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{user?.user_metadata?.username || user?.email?.split('@')[0] || 'User'}</span>.
                     </h1>
                     <p style={{ fontSize: '1.1rem', color: 'var(--color-text-muted)' }}>
-                        Your digital legacy is <strong style={{ color: 'var(--color-primary)' }}>78% complete</strong>.
-                        <a href="#" style={{ color: 'var(--color-accent)', textDecoration: 'none', marginLeft: '0.5rem' }}>Finish setup &rarr;</a>
+                        Your digital legacy is <strong style={{ color: 'var(--color-primary)' }}>{
+                            Math.min(100, (
+                                (counts.beneficiaries ? 50 : 0) +
+                                (Object.values(counts).some(v => v > 0 && v !== counts.beneficiaries) ? 50 : 0)
+                            ))
+                        }% complete</strong>.
+                        <button
+                            onClick={() => navigate(counts.beneficiaries ? '/add-info' : '/trusted')}
+                            style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'var(--color-accent)',
+                                cursor: 'pointer',
+                                fontSize: 'inherit',
+                                fontWeight: 'inherit',
+                                marginLeft: '0.5rem',
+                                padding: 0
+                            }}
+                        >
+                            Finish setup &rarr;
+                        </button>
                     </p>
                 </motion.section>
 
@@ -338,7 +401,7 @@ const Dashboard = () => {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                                 <div>
                                     <p style={{ fontSize: '1.75rem', fontWeight: 'bold', margin: '0 0 0.5rem', color: checkIn.is_emergency ? '#EF4444' : '#10B981' }}>
-                                        {checkIn.days_remaining} {checkIn.days_remaining === 1 ? 'Day' : 'Days'}
+                                        {checkIn.days_remaining !== undefined ? checkIn.days_remaining : '--'} {checkIn.days_remaining === 1 ? 'Day' : 'Days'}
                                     </p>
                                     <p style={{ fontSize: '0.85rem', margin: 0, color: 'var(--color-text-muted)' }}>
                                         until next check-in
@@ -349,6 +412,7 @@ const Dashboard = () => {
                                     whileHover={{ scale: 1.05 }}
                                     whileTap={{ scale: 0.95 }}
                                     onClick={async () => {
+                                        const tid = toast.loading('Checking in...');
                                         try {
                                             const { error } = await supabase
                                                 .from('profiles')
@@ -359,9 +423,11 @@ const Dashboard = () => {
                                                 .eq('id', user.id);
 
                                             if (error) throw error;
+                                            toast.success('Check-in successful!', { id: tid });
                                             fetchDashboardData();
                                         } catch (error) {
                                             console.error('Check-in failed:', error);
+                                            toast.error('Check-in failed. Please try again.', { id: tid });
                                         }
                                     }}
                                     className="btn btn-secondary"
